@@ -15,7 +15,7 @@ jobs:
   check:
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -28,6 +28,14 @@ jobs:
       - run: npm test
       - run: npm run build # 비밀값 없이 통과해야 한다
       - run: npm run scan # 추적 파일과 .next/static 번들 검사
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e # 데모는 Supabase 요청 0건, 실데이터 경로는 /login으로
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: test-results/
+          retention-days: 7
 
   rls:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'

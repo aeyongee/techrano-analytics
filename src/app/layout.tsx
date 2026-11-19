@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono } from "next/font/google";
 import localFont from "next/font/local";
+import { RegisterSW } from "@/components/shell/RegisterSW";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full">
         <TooltipProvider delayDuration={150}>{children}</TooltipProvider>
         <Toaster position="top-center" theme="dark" />
+        <RegisterSW />
       </body>
     </html>
   );
