@@ -1,0 +1,6 @@
+{
+  "episodes": {
+    "1": { "series": "공감", "hookDesc": "모니터 앞에서 \"이거 왜 안 돼?\" 한마디로 시작" },
+    "2": { "series": "보안 개념", "topic": "비밀번호 재사용", "isTrueStory": false, "hypothesis": "첫 문장에 문제를 말하면 건너뛰기가 45% 아래로 내려간다" }
+  }
+}

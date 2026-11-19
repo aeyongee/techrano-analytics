@@ -1,0 +1,6 @@
+{
+  "points": [
+    { "epNo": 2, "capturedAt": "2026-01-03T13:30:00+09:00", "views": 1200 },
+    { "epNo": 2, "capturedAt": "2026-01-03T14:30:00+09:00", "views": 1350, "reach": 1000, "saved": 5, "shares": 2, "comments": 1, "likes": 20, "skipRate": 50.5, "avgWatchMs": 10000 }
+  ]
+}
