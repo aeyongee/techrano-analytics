@@ -568,7 +568,7 @@ iOS 홈 화면 앱에는 당겨서 새로고침이 없으므로 상단 새로고
 printf 'META_ACCESS_TOKEN=%s\n' "$(security find-generic-password -a techrano -s techrano-instagram -w)" >> .env.local
 printf 'GOOGLE_REFRESH_TOKEN=%s\n' "$(security find-generic-password -a techrano -s techrano-youtube-token -w)" >> .env.local
 security find-generic-password -a techrano -s techrano-youtube-client -w \
-  | python3 -c 'import json,sys;c=json.load(sys.stdin);print(f"GOOGLE_CLIENT_ID={c[\"client_id\"]}\nGOOGLE_CLIENT_SECRET={c[\"client_secret\"]}")' >> .env.local
+  | python3 -c 'import json,sys;c=json.load(sys.stdin);print("GOOGLE_CLIENT_ID="+c["client_id"]);print("GOOGLE_CLIENT_SECRET="+c["client_secret"])' >> .env.local
 ```
 
 Vercel은 `security … -w | npx vercel env add NAME production`. `CRON_SECRET`은 `S=$(openssl rand -hex 32); printf %s "$S" | gh secret set CRON_SECRET; printf %s "$S" | npx vercel env add CRON_SECRET production; unset S`.

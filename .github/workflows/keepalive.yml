@@ -1,0 +1,23 @@
+name: keepalive
+
+# 공개 레포는 60일 동안 활동이 없으면 예약 워크플로가 꺼진다.
+# 매달 sync 워크플로를 다시 켜 둔다(keepalive 계열 액션이 쓰는 API 방식).
+# 그래도 꺼지면 대시보드 상단 수집 상태 점이 빨갛게 바뀌고 GitHub가 메일을 보낸다.
+
+on:
+  schedule:
+    - cron: "0 0 1 * *"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+jobs:
+  enable-sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Re-enable sync workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${GITHUB_REPOSITORY}/actions/workflows/sync.yml/enable" && echo "sync.yml 활성 상태 유지"
