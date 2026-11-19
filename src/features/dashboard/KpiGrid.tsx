@@ -1,0 +1,48 @@
+import { ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { cn } from "cn";
+import type { DashboardData } from "@/lib/data/builders";
+import { formatCount, formatPct, formatRate, formatSignedCount } from "@/lib/domain/format";
+
+function Tile({ label, value, children }: { label: string; value: string; children: React.ReactNode }) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1 rounded-xl border border-border bg-card px-4 py-3 shadow-block">
+      <span className="truncate text-xs text-muted-foreground" title={`${label} · 비율은 중앙값`}>{label}</span>
+      <span className="text-[26px] font-bold leading-tight tracking-tight tabular-nums xl:text-[30px]">{value}</span>
+      <span className="text-xs tabular-nums">{children}</span>
+    </div>
+  );
+}
+
+/** 화살표는 값이 오른 방향, 색은 좋아졌는지(건너뛰기는 내려가야 좋다) */
+function Trend({ up, good, children }: { up: boolean | null; good: boolean | null; children: React.ReactNode }) {
+  const Icon = up ? ArrowUpRight : ArrowDownRight;
+  return (
+    <span className={cn("inline-flex items-center gap-0.5", good === null ? "text-muted-foreground" : good ? "text-rano" : "text-danger")}>
+      {up === null ? null : <Icon className="size-3.5" aria-hidden />}
+      {children}
+    </span>
+  );
+}
+
+export function KpiGrid({ kpis }: { kpis: DashboardData["kpis"] }) {
+  const { igViews, ytViews, skipMedian, saveShareMedian } = kpis;
+  const growth = (v: number | null) =>
+    v === null ? <span className="text-muted-foreground">수집 7일 뒤부터 표시</span> : <Trend up={v >= 0} good={v >= 0}>{formatSignedCount(v)} · 7일</Trend>;
+  // 건너뛰기는 낮을수록 좋다
+  const rose = (k: { value: number | null; compare: number | null }) =>
+    k.value !== null && k.compare !== null && k.value !== k.compare ? k.value > k.compare : null;
+  const skipUp = rose(skipMedian);
+  const ssUp = rose(saveShareMedian);
+  return (
+    <div className="grid grid-cols-2 gap-3 xl:grid-cols-4 xl:gap-4">
+      <Tile label="인스타 총 조회" value={formatCount(igViews.value)}>{growth(igViews.compare)}</Tile>
+      <Tile label="유튜브 총 조회" value={formatCount(ytViews.value)}>{growth(ytViews.compare)}</Tile>
+      <Tile label="건너뛰기 (최근 5편)" value={formatPct(skipMedian.value)}>
+        <Trend up={skipUp} good={skipUp === null ? null : !skipUp}>직전 5편 {formatPct(skipMedian.compare)}</Trend>
+      </Tile>
+      <Tile label="저장+공유 (최근 5편)" value={formatRate(saveShareMedian.value)}>
+        <Trend up={ssUp} good={ssUp}>직전 5편 {formatRate(saveShareMedian.compare)}</Trend>
+      </Tile>
+    </div>
+  );
+}
