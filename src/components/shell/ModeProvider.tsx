@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, use, type ReactNode } from "react";
+import { demoActions } from "@/lib/actions/demo";
 import type { EpisodeActions } from "@/lib/actions/types";
 
 export interface ModeContextValue {
@@ -14,7 +15,9 @@ export interface ModeContextValue {
 const ModeContext = createContext<ModeContextValue>({ mode: "demo", basePath: "/demo", actions: null });
 
 export function ModeProvider({ value, children }: { value: ModeContextValue; children: ReactNode }) {
-  return <ModeContext value={value}>{children}</ModeContext>;
+  // 데모는 서버에서 함수를 넘길 수 없으니 여기서 저장하지 않는 동작을 끼운다.
+  const actions = value.actions ?? (value.mode === "demo" ? demoActions : null);
+  return <ModeContext value={{ ...value, actions }}>{children}</ModeContext>;
 }
 
 export const useMode = () => use(ModeContext);
