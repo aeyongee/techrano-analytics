@@ -20,6 +20,9 @@ alter default privileges for role postgres in schema public revoke all on tables
 alter default privileges for role postgres in schema public revoke all on sequences from anon, authenticated;
 alter default privileges for role postgres in schema public revoke execute on functions from public, anon, authenticated;
 
+-- 프로젝트를 "새 테이블 자동 공개" 없이 만들었으므로 스키마 접근도 명시한다(anon에는 주지 않는다).
+grant usage on schema public to authenticated, service_role;
+
 grant select, insert, update, delete on public.episodes to authenticated;
 grant select on public.ig_media, public.yt_videos, public.ig_snapshots,
                 public.yt_snapshots, public.sync_runs to authenticated;
