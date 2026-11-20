@@ -6,7 +6,7 @@ import { NextResponse, type NextRequest } from "next/server";
  * 보안 경계로 보지 않는다. 실데이터는 requireAdmin()(2층)과 RLS(3층)가 막는다.
  * 데모·로그인·크론은 Supabase에 전혀 닿지 않게 그대로 통과시킨다.
  */
-const PUBLIC_PREFIXES = ["/login", "/demo", "/api/cron/", "/auth/", "/offline"];
+const PUBLIC_PREFIXES = ["/login", "/demo", "/api/cron/", "/auth/", "/offline", "/privacy"];
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
