@@ -1,5 +1,5 @@
 import type { Repository } from "@/lib/data/repository";
-import type { ChannelTotals, IgPoint, YtPoint } from "@/lib/domain/types";
+import type { AudiencePoint, AudienceSummary, ChannelTotals, IgPoint, Platform, YtPoint } from "@/lib/domain/types";
 import { generateDemoWorld, type DemoWorld } from "./generate";
 
 const HOUR = 3_600_000;
@@ -32,6 +32,21 @@ export class DemoRepository implements Repository {
     return Object.fromEntries(
       videoIds.map((id) => [id, (this.world.yt[id] ?? []).filter((p) => p.hours <= maxHours)]),
     ) as Record<string, YtPoint[]>;
+  }
+
+  /** 가상 팔로워·구독자: 그 시각까지 쌓인 가상 조회수에 비례해 늘어난다 */
+  async getAudienceAt(platform: Platform, at: Date): Promise<AudiencePoint | null> {
+    if (at.getTime() > this.world.anchor.getTime()) at = this.world.anchor;
+    const t = await this.getChannelTotals(at);
+    const count = platform === "ig" ? Math.round(120 + t.igViews * 0.0011) : Math.round(4 + t.ytViews * 0.0006);
+    return { capturedAt: at.toISOString(), count };
+  }
+
+  async getAudience(platform: Platform): Promise<AudienceSummary> {
+    const now = this.world.anchor.getTime();
+    const daily: AudiencePoint[] = [];
+    for (let d = 29; d >= 0; d--) daily.push((await this.getAudienceAt(platform, new Date(now - d * 24 * HOUR)))!);
+    return { latest: daily.at(-1)!, weekAgo: daily[daily.length - 8], daily };
   }
 
   async getChannelTotals(at: Date): Promise<ChannelTotals> {

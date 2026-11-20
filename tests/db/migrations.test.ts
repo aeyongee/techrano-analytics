@@ -2,8 +2,8 @@ import type { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { ADMIN_CLAIMS, USER_CLAIMS, createMigratedDb, queryAs } from "./supabase-stub";
 
-const TABLES = ["episodes", "ig_media", "yt_videos", "ig_snapshots", "yt_snapshots", "sync_runs"];
-const VIEWS = ["v_ig_series", "v_yt_series", "v_episode_overview"];
+const TABLES = ["episodes", "ig_media", "yt_videos", "ig_snapshots", "yt_snapshots", "sync_runs", "audience_snapshots"];
+const VIEWS = ["v_ig_series", "v_yt_series", "v_episode_overview", "v_audience_daily"];
 
 let db: PGlite;
 
@@ -18,10 +18,13 @@ async function errorCode(p: Promise<unknown>): Promise<string | undefined> {
 
 async function seed() {
   await db.exec(`
-    truncate public.ig_snapshots, public.yt_snapshots, public.sync_runs, public.ig_media, public.yt_videos restart identity cascade;
+    truncate public.audience_snapshots, public.ig_snapshots, public.yt_snapshots, public.sync_runs, public.ig_media, public.yt_videos restart identity cascade;
     delete from public.episodes;
     insert into public.episodes (ep_no, title, status, ig_shortcode, yt_video_id, is_benchmark)
       values (5, '댓글 하나로 사이트가 털리는 이유', 'published', 'AbCdEf12345', 'cKQIEccirkE', true);
+    insert into public.audience_snapshots (platform, captured_at, count)
+      values ('ig', '2026-11-12T14:50:00Z', 280), ('ig', '2026-11-12T14:55:00Z', 281), ('ig', '2026-11-13T03:00:00Z', 286),
+             ('yt', '2026-11-13T03:00:00Z', 11);
     insert into public.ig_media (media_id, shortcode, permalink, posted_at)
       values ('17900000000000001', 'AbCdEf12345', 'https://www.instagram.com/reel/AbCdEf12345/', '2026-11-12T02:55:00Z');
     insert into public.yt_videos (video_id, title, privacy_status, published_at, duration_sec)
@@ -106,6 +109,18 @@ describe("관리자", () => {
     expect(rows[0].yt_views).toBe(1100); // 최신 Data API 값
     expect(rows[0].a_views).toBe(850); // 최신 Analytics 값은 그 앞 행에서
     expect(new Date(rows[0].yt_analytics_at).toISOString()).toBe("2026-11-13T02:39:00.000Z");
+  });
+
+  it("팔로워는 한국 날짜마다 마지막 값 하나로 묶는다", async () => {
+    const rows = await queryAs<{ platform: string; day: string; count: number }>(
+      db, "authenticated", ADMIN_CLAIMS, "select platform, day::text, count from public.v_audience_daily order by platform, day",
+    );
+    // 11/12 14:50Z·14:55Z는 한국 시각 11/12 23:5x, 11/13 03:00Z는 11/13 12:00
+    expect(rows).toEqual([
+      { platform: "ig", day: "2026-11-12", count: 281 },
+      { platform: "ig", day: "2026-11-13", count: 286 },
+      { platform: "yt", day: "2026-11-13", count: 11 },
+    ]);
   });
 
   it("hours_since_post와 비율을 계산한다", async () => {

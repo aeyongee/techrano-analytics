@@ -22,7 +22,8 @@
     "scan": "bash scripts/scan-secrets.sh",
     "check-setup": "tsx --env-file-if-exists=.env.local scripts/check-setup.ts",
     "set-env": "bash scripts/set-env.sh",
-    "db:apply": "tsx --env-file-if-exists=.env.local scripts/db-apply.ts"
+    "db:apply": "tsx --env-file-if-exists=.env.local scripts/db-apply.ts",
+    "backfill-audience": "tsx --env-file=.env.local scripts/backfill-audience.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

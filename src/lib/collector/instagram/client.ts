@@ -56,6 +56,16 @@ export class InstagramClient {
     throw e;
   }
 
+  /** 계정 팔로워 수 */
+  async getFollowersCount(igUserId: string): Promise<number | null> {
+    try {
+      const res = await this.get<{ followers_count?: number }>(igUserId, { fields: "followers_count" });
+      return typeof res.followers_count === "number" ? res.followers_count : null;
+    } catch (e) {
+      this.translate(e);
+    }
+  }
+
   async getAccount(): Promise<{ id: string; username: string | null }> {
     const res = await this.get<{ data: { id: string; username?: string }[] }>("me/assigned_instagram_accounts", {
       fields: "id,username",

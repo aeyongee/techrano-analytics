@@ -49,7 +49,8 @@ function world(overrides: Partial<Record<string, (url: URL) => Reply>> = {}) {
     [/graph\.facebook\.com\/M\d\/insights$/, overrides.insights ?? (() => ({ body: insights(FULL) }))],
     [/graph\.facebook\.com\/me\/assigned_instagram_accounts$/, overrides.account ?? (() => ({ body: { data: [{ id: "IGUSER", username: "tech.rano" }] } }))],
     [/oauth2\.googleapis\.com\/token$/, overrides.token ?? (() => ({ body: { access_token: "ya29" + ".testaccesstoken1234567890" } }))],
-    [/youtube\/v3\/channels$/, () => ({ body: { items: [{ contentDetails: { relatedPlaylists: { uploads: "UU1" } } }] } })],
+    [/graph\.facebook\.com\/IGUSER$/, overrides.followers ?? (() => ({ body: { followers_count: 286, id: "IGUSER" } }))],
+    [/youtube\/v3\/channels$/, () => ({ body: { items: [{ contentDetails: { relatedPlaylists: { uploads: "UU1" } }, statistics: { subscriberCount: "11", hiddenSubscriberCount: false } }] } })],
     [/youtube\/v3\/playlistItems$/, () => ({ body: { items: [{ contentDetails: { videoId: "ytvideo0001" } }, { contentDetails: { videoId: "ytvideo0002" } }] } })],
     [/youtube\/v3\/videos$/, overrides.videos ?? (() => ({
       body: {
@@ -232,6 +233,19 @@ describe("runSync", () => {
     store.covers.clear();
     await runSync({ trigger: "cli" }, { ...deps(store, routes.impl), fetchImpl, clock: () => NOW + 20 * 60_000 });
     expect(store.covers.size).toBe(0);
+  });
+
+  it("팔로워·구독자 수를 함께 남기고, 못 받아도 success다", async () => {
+    const store = seededStore();
+    const s = await runSync({ trigger: "cli" }, deps(store, world().impl));
+    expect(s.status).toBe("success");
+    expect(store.audience.map((a) => [a.platform, a.count])).toEqual([["ig", 286], ["yt", 11]]);
+
+    const store2 = seededStore();
+    const s2 = await runSync({ trigger: "cli" }, deps(store2, world({ followers: () => ({ status: 500, body: { error: { message: "boom" } } }) }).impl));
+    expect(s2.status).toBe("success");
+    expect(s2.errors.some((e) => e.stage === "audience" && e.platform === "ig")).toBe(true);
+    expect(store2.audience.map((a) => a.platform)).toEqual(["yt"]);
   });
 
   it("표지를 못 받아도 수집은 success로 남는다", async () => {

@@ -76,6 +76,14 @@ export function LatestEpisodeCard({ card, basePath }: { card: LatestCard; basePa
 
       <GateBadges hook={e.gates.hook} spread={e.gates.spread} />
 
+      {card.followerGain ? (
+        <p className="text-xs text-muted-foreground tabular-nums">
+          게시 후 {formatAge(card.followerGain.hours)} 동안 팔로워{" "}
+          <span className={card.followerGain.count > 0 ? "font-semibold text-rano" : "text-foreground"}>{formatSignedCount(card.followerGain.count)}</span>
+          <span className="text-[11px]"> (계정 전체 기준)</span>
+        </p>
+      ) : null}
+
       {card.benchmarks.length ? (
         <p className="text-xs text-muted-foreground tabular-nums">
           같은 {formatAge(e.ageHours)} 시점:{" "}

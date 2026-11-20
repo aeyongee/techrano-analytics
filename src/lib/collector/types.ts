@@ -17,7 +17,7 @@ export interface RunSyncOptions {
 
 export interface SyncError {
   platform: "ig" | "yt" | "yt_analytics" | "db";
-  stage: "config" | "auth" | "discover" | "insights" | "videos" | "analytics" | "write" | "pair" | "cover";
+  stage: "config" | "auth" | "discover" | "insights" | "videos" | "analytics" | "write" | "pair" | "cover" | "audience";
   target?: string;
   code: string;
   /** redact 후 300자 이하 */
@@ -148,6 +148,13 @@ export type YtVideoPatch = Partial<
   Pick<YtVideoState, "isTracked" | "lastSnapshotAt" | "analyticsCheckedAt" | "analyticsReadyAt" | "consecutiveFailures" | "coverPath">
 >;
 
+export interface AudienceInput {
+  platform: Platform;
+  capturedAt: Date;
+  count: number;
+  source: "api" | "backfill";
+}
+
 export interface SyncStore {
   /** 잠금을 잡는다. 실행 중이면 SyncBusyError, 최소 간격 안이면 SyncCooldownError. */
   startRun(trigger: Trigger, minGapSeconds: number): Promise<number | null>;
@@ -163,6 +170,8 @@ export interface SyncStore {
   mergeEpisodes(sourceId: number, targetId: number, auto: boolean): Promise<void>;
   insertIgSnapshots(rows: IgSnapshotInput[], runId: number | null): Promise<number>;
   insertYtSnapshots(rows: YtSnapshotInput[], runId: number | null): Promise<number>;
+  /** 채널 팔로워·구독자 수(같은 플랫폼·시각이면 건너뛴다) */
+  insertAudience(rows: AudienceInput[], runId: number | null): Promise<number>;
   /** 표지 파일을 covers 버킷에 올린다(같은 경로면 덮어쓴다). */
   uploadCover(path: string, bytes: ArrayBuffer, contentType: string): Promise<void>;
 }

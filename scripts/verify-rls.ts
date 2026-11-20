@@ -12,8 +12,8 @@ import type { Database } from "../src/lib/supabase/database.types";
 import { publicEnv, supabaseSecretEnv } from "../src/lib/env";
 import { parseArgs } from "./lib/args";
 
-const TABLES = ["episodes", "ig_media", "yt_videos", "ig_snapshots", "yt_snapshots", "sync_runs"] as const;
-const VIEWS = ["v_ig_series", "v_yt_series", "v_episode_overview"] as const;
+const TABLES = ["episodes", "ig_media", "yt_videos", "ig_snapshots", "yt_snapshots", "sync_runs", "audience_snapshots"] as const;
+const VIEWS = ["v_ig_series", "v_yt_series", "v_episode_overview", "v_audience_daily"] as const;
 
 const args = parseArgs();
 const pub = publicEnv();

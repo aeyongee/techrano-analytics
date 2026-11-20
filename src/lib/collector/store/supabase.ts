@@ -6,6 +6,7 @@ import {
   type EpisodeKey,
   type IgMediaPatch,
   type IgMediaState,
+  type AudienceInput,
   type IgSnapshotInput,
   type Platform,
   type RunFinish,
@@ -254,6 +255,20 @@ export class SupabaseSyncStore implements SyncStore {
           { onConflict: "video_id,captured_at", ignoreDuplicates: true },
         )
         .select("id"),
+    );
+    return data.length;
+  }
+
+  async insertAudience(rows: AudienceInput[], runId: number | null) {
+    const data = check(
+      "audience_snapshots insert",
+      await this.db
+        .from("audience_snapshots")
+        .upsert(
+          rows.map((r) => ({ platform: r.platform, captured_at: r.capturedAt.toISOString(), count: r.count, source: r.source, run_id: runId })),
+          { onConflict: "platform,captured_at", ignoreDuplicates: true },
+        )
+        .select("platform"),
     );
     return data.length;
   }

@@ -64,9 +64,7 @@ export function YtLatestCard({ card, basePath }: { card: Card; basePath: string 
       <dl className="grid grid-cols-3 gap-3">
         <Stat label="유효 조회 비율">{formatPct(e.ytGates.engagedRatio)}</Stat>
         <Stat label="평균 시청률">{formatPct(e.ytGates.avgViewPct)}</Stat>
-        <Stat label="좋아요 · 댓글">
-          {formatCountFull(latest?.likes)} · {formatCountFull(latest?.comments)}
-        </Stat>
+        <Stat label="이 편으로 구독">{a?.subscribersGained === null || a?.subscribersGained === undefined ? "—" : formatSignedCount(a.subscribersGained)}</Stat>
       </dl>
 
       <GateBadges hook={e.ytGates.hook} spread={e.ytGates.finish} labels={["1차 초반", "2차 끝까지"]} />

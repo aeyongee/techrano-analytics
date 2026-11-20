@@ -1,6 +1,7 @@
 import type {
   IgMediaPatch,
   IgMediaState,
+  AudienceInput,
   IgSnapshotInput,
   Platform,
   RunFinish,
@@ -57,6 +58,10 @@ export class DryRunStore implements SyncStore {
   }
   async insertYtSnapshots(rows: YtSnapshotInput[]) {
     this.ytSnapshots.push(...rows);
+    return rows.length;
+  }
+  async insertAudience(rows: AudienceInput[]) {
+    for (const r of rows) this.writes.push(`${r.platform === "ig" ? "인스타 팔로워" : "유튜브 구독자"} ${r.count}`);
     return rows.length;
   }
   async uploadCover(path: string, bytes: ArrayBuffer) {

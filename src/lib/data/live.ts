@@ -1,7 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireAdmin } from "@/lib/auth/guard";
-import type { ChannelTotals, IgPoint, UntrackedItem, YtPoint } from "@/lib/domain/types";
+import type { AudiencePoint, AudienceSummary, ChannelTotals, IgPoint, Platform, UntrackedItem, YtPoint } from "@/lib/domain/types";
 import type { Database } from "@/lib/supabase/database.types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { coverPathOf, mapIgSeriesRow, mapOverviewRow, mapRunRow, mapYtSeriesRow } from "./live-mapping";
@@ -103,6 +103,31 @@ class SupabaseRepository implements Repository {
       igShares: Number(r?.ig_shares ?? 0),
       ytViews: Number(r?.yt_views ?? 0),
     };
+  }
+
+  async getAudienceAt(platform: Platform, at: Date): Promise<AudiencePoint | null> {
+    const { data, error } = await this.db
+      .from("audience_snapshots")
+      .select("captured_at, count")
+      .eq("platform", platform)
+      .lte("captured_at", at.toISOString())
+      .order("captured_at", { ascending: false })
+      .limit(1);
+    if (error) throw new Error(`팔로워 조회 실패: ${error.message}`);
+    const r = data?.[0];
+    return r ? { capturedAt: r.captured_at, count: r.count } : null;
+  }
+
+  async getAudience(platform: Platform): Promise<AudienceSummary> {
+    const now = new Date();
+    const since = new Date(now.getTime() - 30 * 24 * 3_600_000).toISOString().slice(0, 10);
+    const [latest, weekAgo, daily] = await Promise.all([
+      this.getAudienceAt(platform, now),
+      this.getAudienceAt(platform, new Date(now.getTime() - 7 * 24 * 3_600_000)),
+      this.db.from("v_audience_daily").select("captured_at, count").eq("platform", platform).gte("day", since).order("day"),
+    ]);
+    if (daily.error) throw new Error(`팔로워 흐름 조회 실패: ${daily.error.message}`);
+    return { latest, weekAgo, daily: (daily.data ?? []).map((r) => ({ capturedAt: r.captured_at, count: r.count })) };
   }
 
   async listSyncRuns(limit: number) {

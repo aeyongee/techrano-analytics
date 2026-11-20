@@ -75,6 +75,14 @@ type SyncRunRow = {
   note: string | null;
 };
 
+type AudienceSnapshotRow = {
+  platform: "ig" | "yt";
+  captured_at: string;
+  count: number;
+  source: "api" | "backfill";
+  run_id: number | null;
+};
+
 type IgSnapshotRow = {
   id: number;
   media_id: string;
@@ -140,6 +148,12 @@ export type Database = {
         Update: Partial<Omit<SyncRunRow, "id">>;
         Relationships: [];
       };
+      audience_snapshots: {
+        Row: AudienceSnapshotRow;
+        Insert: InsertOf<AudienceSnapshotRow, "platform" | "captured_at" | "count", never>;
+        Update: Partial<AudienceSnapshotRow>;
+        Relationships: [];
+      };
       ig_snapshots: {
         Row: IgSnapshotRow;
         Insert: InsertOf<IgSnapshotRow, "media_id" | "captured_at", "id">;
@@ -192,6 +206,10 @@ export type Database = {
           a_shares: number;
           a_subscribers_gained: number;
         }>;
+        Relationships: [];
+      };
+      v_audience_daily: {
+        Row: { platform: "ig" | "yt"; day: string; captured_at: string; count: number };
         Relationships: [];
       };
       v_episode_overview: {

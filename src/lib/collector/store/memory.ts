@@ -4,6 +4,7 @@ import {
   type EpisodeKey,
   type IgMediaPatch,
   type IgMediaState,
+  type AudienceInput,
   type IgSnapshotInput,
   type Platform,
   type RunFinish,
@@ -129,6 +130,14 @@ export class MemorySyncStore implements SyncStore {
   async insertYtSnapshots(rows: YtSnapshotInput[], runId: number | null) {
     this.ytSnapshots.push(...rows.map((r) => ({ ...r, runId })));
     return rows.length;
+  }
+
+  readonly audience: (AudienceInput & { runId: number | null })[] = [];
+
+  async insertAudience(rows: AudienceInput[], runId: number | null) {
+    const fresh = rows.filter((r) => !this.audience.some((a) => a.platform === r.platform && a.capturedAt.getTime() === r.capturedAt.getTime()));
+    this.audience.push(...fresh.map((r) => ({ ...r, runId })));
+    return fresh.length;
   }
 
   readonly covers = new Map<string, number>();

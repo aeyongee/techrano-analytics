@@ -38,6 +38,28 @@ export class YoutubeClient {
     return id;
   }
 
+  /** 채널 구독자 수. 채널이 숨겼으면 null */
+  async getSubscriberCount(): Promise<number | null> {
+    const res = await this.get<{ items?: { statistics?: { subscriberCount?: string; hiddenSubscriberCount?: boolean } }[] }>(
+      DATA_API, "channels", { part: "statistics", mine: "true" }, "yt_data",
+    );
+    const st = res.items?.[0]?.statistics;
+    if (!st || st.hiddenSubscriberCount || st.subscriberCount === undefined) return null;
+    const n = Number(st.subscriberCount);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  /** 날짜별 구독 증감(지난 기록 채우기용). [YYYY-MM-DD, 순증] 시간순 */
+  async getDailySubscriberNet(startDate: string, endDate: string): Promise<[string, number][]> {
+    const res = await this.get<AnalyticsReport>(
+      ANALYTICS_API,
+      "",
+      { ids: "channel==MINE", startDate, endDate, metrics: "subscribersGained,subscribersLost", dimensions: "day", sort: "day" },
+      "yt_analytics",
+    );
+    return (res.rows ?? []).map((r) => [String(r[0]), Number(r[1] ?? 0) - Number(r[2] ?? 0)]);
+  }
+
   async getChannelTitle(): Promise<string | null> {
     const res = await this.get<{ items?: { snippet?: { title?: string } }[] }>(
       DATA_API, "channels", { part: "snippet", mine: "true" }, "yt_data",

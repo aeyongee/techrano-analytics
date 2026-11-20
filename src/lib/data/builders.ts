@@ -5,7 +5,7 @@ import { episodeLabel, formatCount, formatPct, formatRate, formatSignedCount } f
 import { evaluateGates, evaluateYtGates, type GateResult, type YtGateResult } from "@/lib/domain/gates";
 import { median } from "@/lib/domain/metrics";
 import { valueAt } from "@/lib/domain/resample";
-import type { ChannelTotals, EpisodeRaw, IgPoint, Quadrant, SyncRunRow, Verdict, YtPoint } from "@/lib/domain/types";
+import type { AudienceSummary, ChannelTotals, EpisodeRaw, IgPoint, Quadrant, SyncRunRow, Verdict, YtPoint } from "@/lib/domain/types";
 import type { Repository } from "./repository";
 
 // ── 공통 ────────────────────────────────────────────────────────────
@@ -47,6 +47,18 @@ export interface KpiValue {
   value: number | null;
   /** 7일 증가(개수 지표) 또는 직전 5편 값(비율 지표) */
   compare: number | null;
+  /** 최근 30일 흐름(날짜마다 마지막 값). 팔로워·구독자에만 있다 */
+  spark?: { h: number; v: number }[];
+}
+
+/** 팔로워·구독자 칸: 현재 값, 7일 증가, 30일 흐름 */
+function audienceKpi(a: AudienceSummary): KpiValue {
+  const first = a.daily[0] ? Date.parse(a.daily[0].capturedAt) : 0;
+  return {
+    value: a.latest?.count ?? null,
+    compare: a.latest && a.weekAgo ? a.latest.count - a.weekAgo.count : null,
+    spark: a.daily.map((p) => ({ h: (Date.parse(p.capturedAt) - first) / 3_600_000, v: p.count })),
+  };
 }
 
 type Benchmark = { key: string; epNo: number | null; title: string; viewsAtAge: number | null };
@@ -58,6 +70,8 @@ export interface LatestCard {
   ytViewsDelta: Delta | null;
   sparkline: { h: number; v: number }[];
   benchmarks: Benchmark[];
+  /** 게시 무렵부터 (최대 24시간 뒤까지) 늘어난 계정 팔로워. 릴스별 팔로우는 API가 주지 않아 계정 전체로 추정한다 */
+  followerGain: { count: number; hours: number } | null;
 }
 
 export interface YtLatestCard {
@@ -89,7 +103,7 @@ export interface QuadrantPoint {
 type Excluded = { key: string; epNo: number | null; reason: string };
 
 export interface IgHome {
-  kpis: { views: KpiValue; reach: KpiValue; skipMedian: KpiValue; saveShareMedian: KpiValue };
+  kpis: { views: KpiValue; followers: KpiValue; skipMedian: KpiValue; saveShareMedian: KpiValue };
   latest: LatestCard | null;
   /** 홈 맨 위 "지금 상황" 문장(최신 편 기준) */
   diagnosis: Diagnosis | null;
@@ -99,7 +113,7 @@ export interface IgHome {
 }
 
 export interface YtHome {
-  kpis: { views: KpiValue; engagedMedian: KpiValue; avgViewPctMedian: KpiValue; subsRecent: KpiValue };
+  kpis: { views: KpiValue; engagedMedian: KpiValue; avgViewPctMedian: KpiValue; subscribers: KpiValue };
   latest: YtLatestCard | null;
   diagnosis: Diagnosis | null;
   quadrant: QuadrantPoint[];
@@ -150,6 +164,7 @@ function buildIgHome(eps: EpisodeView[], posted: EpisodeView[], input: Dashboard
       benchmarks: benchmarksAt(eps, latest, igAge, (b) =>
         b.ig ? (input.igSeries[b.ig.mediaId] ?? []).map((p) => ({ hours: p.hours, value: p.views })) : null,
       ),
+      followerGain: input.followerGain,
     };
   }
 
@@ -198,7 +213,7 @@ function buildIgHome(eps: EpisodeView[], posted: EpisodeView[], input: Dashboard
   return {
     kpis: {
       views: { value: now.igViews, compare: hasWeekAgo ? now.igViews - ago.igViews : null },
-      reach: { value: now.igReach, compare: hasWeekAgo ? now.igReach - ago.igReach : null },
+      followers: audienceKpi(input.audience.ig),
       skipMedian: { value: skip(recent5), compare: skip(prev5) },
       saveShareMedian: { value: ss(recent5), compare: ss(prev5) },
     },
@@ -231,7 +246,6 @@ function buildYtHome(eps: EpisodeView[], posted: EpisodeView[], input: Dashboard
   const prev5 = withA.slice(5, 10);
   const engaged = (xs: EpisodeView[]) => median(xs.map((e) => e.ytGates.engagedRatio));
   const pct = (xs: EpisodeView[]) => median(xs.map((e) => e.ytGates.avgViewPct));
-  const subs = (xs: EpisodeView[]) => (xs.length ? xs.reduce((n, e) => n + (e.yt!.analytics!.subscribersGained ?? 0), 0) : null);
 
   let latestCard: YtLatestCard | null = null;
   if (latest) {
@@ -285,7 +299,7 @@ function buildYtHome(eps: EpisodeView[], posted: EpisodeView[], input: Dashboard
       views: { value: now.ytViews, compare: hasWeekAgo ? now.ytViews - ago.ytViews : null },
       engagedMedian: { value: engaged(recent5), compare: engaged(prev5) },
       avgViewPctMedian: { value: pct(recent5), compare: pct(prev5) },
-      subsRecent: { value: subs(recent5), compare: subs(prev5) },
+      subscribers: audienceKpi(input.audience.yt),
     },
     latest: latestCard,
     diagnosis: latestCard
@@ -313,6 +327,8 @@ interface DashboardInput {
   ytSeries: Record<string, YtPoint[]>;
   totalsNow: ChannelTotals;
   totalsWeekAgo: ChannelTotals;
+  audience: { ig: AudienceSummary; yt: AudienceSummary };
+  followerGain: LatestCard["followerGain"];
   now: Date;
 }
 
@@ -328,6 +344,14 @@ export function buildDashboard(input: DashboardInput): DashboardData {
   };
 }
 
+/** 게시 직전 값(3시간 안)이 있을 때만, 게시 후 최대 24시간 동안 늘어난 팔로워 */
+async function followerGainAfter(repo: Repository, postedAt: number, now: Date): Promise<LatestCard["followerGain"]> {
+  const end = Math.min(now.getTime(), postedAt + 24 * 3_600_000);
+  const [before, after] = await Promise.all([repo.getAudienceAt("ig", new Date(postedAt)), repo.getAudienceAt("ig", new Date(end))]);
+  if (!before || !after || postedAt - Date.parse(before.capturedAt) > 3 * 3_600_000) return null;
+  return { count: after.count - before.count, hours: Math.max(0, (Date.parse(after.capturedAt) - postedAt) / 3_600_000) };
+}
+
 export async function loadDashboard(repo: Repository): Promise<DashboardData> {
   const now = repo.now();
   const episodes = await repo.listEpisodes();
@@ -335,13 +359,18 @@ export async function loadDashboard(repo: Repository): Promise<DashboardData> {
   const latest = views[0];
   const focus = [latest, ...views.filter((e) => e.isBenchmark && e.id !== latest?.id)].filter(Boolean);
   const maxHours = Math.max(72, Math.ceil(latest?.ageHours ?? 0) + 1);
-  const [igSeries, ytSeries, totalsNow, totalsWeekAgo] = await Promise.all([
+  const [igSeries, ytSeries, totalsNow, totalsWeekAgo, igAudience, ytAudience, followerGain] = await Promise.all([
     repo.getIgSeries(focus.flatMap((e) => (e.ig ? [e.ig.mediaId] : [])), maxHours),
     repo.getYtSeries(focus.flatMap((e) => (e.yt ? [e.yt.videoId] : [])), maxHours),
     repo.getChannelTotals(now),
     repo.getChannelTotals(new Date(now.getTime() - 7 * 24 * 3_600_000)),
+    repo.getAudience("ig"),
+    repo.getAudience("yt"),
+    latest?.postedAt ? followerGainAfter(repo, Date.parse(latest.postedAt), now) : Promise.resolve(null),
   ]);
-  return buildDashboard({ mode: repo.mode, episodes, igSeries, ytSeries, totalsNow, totalsWeekAgo, now });
+  return buildDashboard({
+    mode: repo.mode, episodes, igSeries, ytSeries, totalsNow, totalsWeekAgo, audience: { ig: igAudience, yt: ytAudience }, followerGain, now,
+  });
 }
 
 export async function loadShellStatus(repo: Repository): Promise<ShellStatus> {

@@ -8,7 +8,7 @@ import { getAccessToken } from "./youtube/auth";
 import { YoutubeClient } from "./youtube/client";
 import { captureYoutube, discoverYoutube, type YtDeps } from "./youtube/sync";
 import type { YtVideoItem } from "./youtube/parse";
-import type { AnalyticsStatus, PlatformSummary, RunStatus, RunSyncOptions, SyncError, SyncStore, SyncSummary } from "./types";
+import type { AnalyticsStatus, AudienceInput, PlatformSummary, RunStatus, RunSyncOptions, SyncError, SyncStore, SyncSummary } from "./types";
 
 export * from "./types";
 export { collectorEnvFromProcess, type CollectorEnv } from "./env";
@@ -148,6 +148,25 @@ export async function runSync(opts: RunSyncOptions, deps: SyncDeps): Promise<Syn
       yt.status = "error";
       platformError("yt", "write", ytDone.reason);
     }
+
+    // ── 팔로워·구독자 수(실패해도 수집 결과에는 영향 없음) ──────────
+    const capturedAt = new Date((deps.clock ?? Date.now)());
+    const audience: AudienceInput[] = [];
+    const [igCount, ytCount] = await Promise.allSettled([
+      igDeps ? igDeps.client.getFollowersCount(igDeps.igUserId) : Promise.resolve(null),
+      ytDeps ? ytDeps.client.getSubscriberCount() : Promise.resolve(null),
+    ]);
+    if (igCount.status === "fulfilled" && igCount.value !== null) audience.push({ platform: "ig", capturedAt, count: igCount.value, source: "api" });
+    else if (igCount.status === "rejected") platformError("ig", "audience", igCount.reason);
+    if (ytCount.status === "fulfilled" && ytCount.value !== null) audience.push({ platform: "yt", capturedAt, count: ytCount.value, source: "api" });
+    else if (ytCount.status === "rejected") platformError("yt", "audience", ytCount.reason);
+    if (audience.length) {
+      try {
+        await deps.store.insertAudience(audience, runId);
+      } catch (e) {
+        platformError("db", "audience", e);
+      }
+    }
   } catch (e) {
     fatal = true;
     platformError("db", "write", e);
@@ -155,7 +174,7 @@ export async function runSync(opts: RunSyncOptions, deps: SyncDeps): Promise<Syn
 
   let status: RunStatus;
   if (fatal || (ig.status === "error" && yt.status === "error")) status = "failed";
-  else if (ctx.errors.some((e) => e.stage !== "cover") || ctx.notes.length || ig.status === "error" || yt.status === "error") status = "partial";
+  else if (ctx.errors.some((e) => e.stage !== "cover" && e.stage !== "audience") || ctx.notes.length || ig.status === "error" || yt.status === "error") status = "partial";
   else status = "success";
 
   const durationMs = clock() - startedMs;

@@ -88,6 +88,21 @@ export interface EpisodeRaw {
   } | null;
 }
 
+/** 채널 팔로워·구독자 수 한 시점 */
+export interface AudiencePoint {
+  capturedAt: string;
+  count: number;
+}
+
+/** 홈 합계 칸용 팔로워·구독자 요약 */
+export interface AudienceSummary {
+  latest: AudiencePoint | null;
+  /** 7일 전 무렵(그 시각 이전 마지막 값) */
+  weekAgo: AudiencePoint | null;
+  /** 날짜마다 마지막 값(최근 30일, 시간순) */
+  daily: AudiencePoint[];
+}
+
 export interface ChannelTotals {
   igViews: number;
   igReach: number;
