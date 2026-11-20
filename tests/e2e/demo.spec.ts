@@ -31,11 +31,25 @@ test.describe("데모 모드", () => {
     await page.goto("/login");
     await page.getByRole("link", { name: "게스트 데모 체험하기" }).click();
     await expect(page).toHaveURL(/\/demo$/);
+    await expect(page.getByText("지금 상황").first()).toBeVisible();
+    await expect(page.getByText("다음에 해 볼 것")).toBeVisible();
+  });
+
+  test("폰에서는 나머지를 접어 두고, 더 보기로 연다", async ({ page, isMobile }) => {
+    await page.goto("/demo");
+    const more = page.getByRole("button", { name: /전체 현황 더 보기/ });
+    if (isMobile) {
+      await expect(page.getByText("2단계 관문").first()).toBeHidden();
+      await more.click();
+    } else {
+      await expect(more).toBeHidden();
+    }
     await expect(page.getByText("2단계 관문").first()).toBeVisible();
   });
 
-  test("사분면 버블을 누르면 아래 설명이 바뀐다", async ({ page }) => {
+  test("사분면 버블을 누르면 아래 설명이 바뀐다", async ({ page, isMobile }) => {
     await page.goto("/demo");
+    if (isMobile) await page.getByRole("button", { name: /전체 현황 더 보기/ }).click();
     const bubble = page.getByRole("button", { name: /^5편 SQL 한 줄의 무게/ });
     await bubble.click();
     await expect(page.getByText("5편 SQL 한 줄의 무게")).toBeVisible();

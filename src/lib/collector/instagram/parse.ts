@@ -18,6 +18,8 @@ export interface IgMediaItem {
   media_product_type?: string;
   timestamp: string;
   permalink?: string;
+  /** 릴스 표지(서명된 CDN 주소라 시간이 지나면 만료된다) */
+  thumbnail_url?: string;
 }
 
 interface InsightItem {

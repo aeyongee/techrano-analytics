@@ -90,3 +90,15 @@ export async function fetchJson<T>(url: string, opts: FetchJsonOptions = {}): Pr
     throw err;
   }
 }
+
+/** 이미지 같은 바이너리를 받는다(재시도 없이 한 번, 타임아웃 15초). */
+export async function fetchBytes(url: string, fetchImpl: typeof fetch = fetch): Promise<{ bytes: ArrayBuffer; contentType: string }> {
+  let res: Response;
+  try {
+    res = await fetchImpl(url, { signal: AbortSignal.timeout(15_000) });
+  } catch (e) {
+    throw new HttpError(0, redactAndTrim(`network: ${(e as Error).message}`), "NETWORK");
+  }
+  if (!res.ok) throw new HttpError(res.status, `이미지를 받지 못했다(${res.status}).`);
+  return { bytes: await res.arrayBuffer(), contentType: res.headers.get("content-type") ?? "image/jpeg" };
+}

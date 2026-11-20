@@ -52,11 +52,11 @@ export function LatestEpisodeCard({ card, basePath }: { card: LatestCard; basePa
             </span>
           ) : null}
         </div>
-        {card.sparkline.length >= 2 ? (
+        {card.sparkline.length >= 2 && card.sparkline[card.sparkline.length - 1].h - card.sparkline[0].h >= 1 ? (
           <Sparkline points={card.sparkline} label={`게시 후 조회수 흐름, 현재 ${formatCountFull(ig?.views)}회`} />
         ) : (
           <p className="grid min-h-14 flex-1 place-items-center rounded-lg border border-dashed border-border text-xs text-muted-foreground">
-            수집이 두 번 이상 쌓이면 게시 후 흐름이 그려진다
+            수집이 한 시간 넘게 쌓이면 조회 흐름이 그려진다
           </p>
         )}
       </div>

@@ -3,6 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { cn } from "cn";
+import { Cover } from "@/components/Cover";
 import { PageHeader, Panel } from "@/components/Panel";
 import { Segmented } from "@/components/Segmented";
 import type { CompareData } from "@/lib/data/screens";
@@ -77,7 +78,8 @@ export function CompareScreen({ data }: { data: CompareData }) {
 
       <div className="flex flex-wrap items-center gap-2">
         {series.map((s) => (
-          <span key={s.key} className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border bg-card px-2.5 text-xs">
+          <span key={s.key} className="inline-flex h-10 items-center gap-1.5 rounded-full border border-border bg-card py-1 pr-3 pl-1 text-xs">
+            <Cover src={s.coverUrl} alt={s.title} size="chip" className="rounded-full" />
             <span className="size-2.5 rounded-full" style={{ background: s.color }} aria-hidden />
             <span className="font-semibold">{s.label}</span>
             <span className="max-w-[9rem] truncate text-muted-foreground">{s.title}</span>

@@ -72,7 +72,7 @@ export class InstagramClient {
     let after: string | undefined;
     for (let page = 0; page < (all ? maxPages : 1); page++) {
       const res = await this.get<Page>(`${igUserId}/media`, {
-        fields: "id,caption,media_product_type,timestamp,permalink",
+        fields: "id,caption,media_product_type,timestamp,permalink,thumbnail_url",
         limit: 25,
         ...(after ? { after } : {}),
       }).catch((e) => this.translate(e));

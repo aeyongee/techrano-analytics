@@ -64,8 +64,8 @@ describe("Supabase 행 → 도메인", () => {
 
 describe("비교 차트 계열", () => {
   const pt = (h: number, views: number) => ({ h, at: "", views, reach: views, skip: 40, save: 1, share: 0.5, src: "api" as const });
-  const dense: CompareSeries = { key: "5", epNo: 5, title: "기준", isLatest: false, ig: Array.from({ length: 30 }, (_, i) => pt(i * 3, (i + 1) * 100)), yt: [] };
-  const live: CompareSeries = { key: "d-1", epNo: null, title: "새 편", isLatest: true, ig: [pt(0.25, 50), pt(1, 300), pt(19.9, 3000)], yt: [] };
+  const dense: CompareSeries = { key: "5", epNo: 5, title: "기준", coverUrl: null, isLatest: false, ig: Array.from({ length: 30 }, (_, i) => pt(i * 3, (i + 1) * 100)), yt: [] };
+  const live: CompareSeries = { key: "d-1", epNo: null, title: "새 편", coverUrl: null, isLatest: true, ig: [pt(0.25, 50), pt(1, 300), pt(19.9, 3000)], yt: [] };
 
   it("최신 편이 첫 색을 받고, 실측이 적으면 sparse", () => {
     const b = buildCompare([dense, live], "ig", "views", "72h");

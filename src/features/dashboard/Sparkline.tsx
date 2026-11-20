@@ -5,6 +5,7 @@ import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 /** 게시 후 지금까지의 조회 흐름. 축 없이 모양만 보여 준다. */
 export function Sparkline({ points, label }: { points: { h: number; v: number }[]; label: string }) {
   if (points.length < 2) return null;
+  const first = points[0];
   const last = points[points.length - 1];
   return (
     <div className="min-h-14 w-full flex-1" role="img" aria-label={label}>
@@ -16,7 +17,7 @@ export function Sparkline({ points, label }: { points: { h: number; v: number }[
               <stop offset="100%" stopColor="var(--rano)" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <XAxis dataKey="h" type="number" domain={[0, last.h]} hide />
+          <XAxis dataKey="h" type="number" domain={[first.h, last.h]} hide />
           <YAxis domain={[0, "dataMax"]} hide />
           <Area
             dataKey="v"

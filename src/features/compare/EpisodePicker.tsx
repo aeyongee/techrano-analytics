@@ -3,6 +3,7 @@
 import { Check, ListChecks, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { cn } from "cn";
+import { Cover } from "@/components/Cover";
 import { GateBadge } from "@/components/GateBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -98,6 +99,7 @@ export function EpisodePicker({
                   <span className={cn("grid size-5 shrink-0 place-items-center rounded-md border", on ? "border-rano bg-rano text-primary-foreground" : "border-input")}>
                     {on ? <Check className="size-3.5" strokeWidth={3} aria-hidden /> : null}
                   </span>
+                  <Cover src={e.coverUrl} alt={e.title} size="xs" />
                   <span className="w-9 shrink-0 text-xs font-bold tabular-nums">{e.epNo ?? "초안"}</span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm">{e.title}</span>

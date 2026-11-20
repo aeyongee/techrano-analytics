@@ -2,7 +2,7 @@ import type { YtAnalyticsValues, YtPrivacy, YtVideoState } from "../types";
 
 export interface YtVideoItem {
   id: string;
-  snippet?: { title?: string; publishedAt?: string };
+  snippet?: { title?: string; publishedAt?: string; thumbnails?: Record<string, { url?: string } | undefined> };
   statistics?: { viewCount?: string; likeCount?: string; commentCount?: string };
   contentDetails?: { duration?: string };
   status?: { privacyStatus?: string; publishAt?: string };
@@ -40,7 +40,15 @@ export function toVideoState(item: YtVideoItem, prev?: YtVideoState): YtVideoSta
     analyticsCheckedAt: prev?.analyticsCheckedAt ?? null,
     analyticsReadyAt: prev?.analyticsReadyAt ?? null,
     consecutiveFailures: 0,
+    coverPath: prev?.coverPath ?? null,
   };
+}
+
+/** 쇼츠 표지 후보: 세로 썸네일 → 가장 큰 가로 썸네일 */
+export function coverUrlsOf(item: YtVideoItem): string[] {
+  const t = item.snippet?.thumbnails ?? {};
+  const fallback = ["maxres", "standard", "high"].map((k) => t[k]?.url).find((u): u is string => !!u);
+  return [`https://i.ytimg.com/vi/${item.id}/oardefault.jpg`, ...(fallback ? [fallback] : [])];
 }
 
 export function statsOf(item: YtVideoItem) {

@@ -86,10 +86,14 @@ export function mapOverviewRow(r: ViewRow<"v_episode_overview">): EpisodeRaw {
     autoPaired: r.auto_paired ?? false,
     postedAt: r.posted_at,
     updatedAt: r.updated_at ?? new Date(0).toISOString(),
+    coverUrl: null, // 저장소 서명 주소는 저장소(live.ts)가 채운다
     ig,
     yt,
   };
 }
+
+/** 인스타 표지를 먼저, 없으면 유튜브 표지 */
+export const coverPathOf = (r: ViewRow<"v_episode_overview">) => r.ig_cover_path ?? r.yt_cover_path ?? null;
 
 export function mapIgSeriesRow(r: ViewRow<"v_ig_series">): IgPoint {
   return {

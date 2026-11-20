@@ -45,6 +45,7 @@ export interface PickerItem {
   status: EpisodeView["status"];
   ageHours: number | null;
   isBenchmark: boolean;
+  coverUrl: string | null;
   hook: Verdict;
   spread: Verdict;
 }
@@ -53,6 +54,7 @@ export interface CompareSeries {
   key: string;
   epNo: number | null;
   title: string;
+  coverUrl: string | null;
   isLatest: boolean;
   ig: CompactIgPoint[];
   yt: CompactYtPoint[];
@@ -95,6 +97,7 @@ export async function loadCompare(repo: Repository, keysParam: string | undefine
       status: e.status,
       ageHours: e.ageHours,
       isBenchmark: e.isBenchmark,
+      coverUrl: e.coverUrl,
       hook: e.gates.hook,
       spread: e.gates.spread,
     })),
@@ -102,6 +105,7 @@ export async function loadCompare(repo: Repository, keysParam: string | undefine
       key: e.key,
       epNo: e.epNo,
       title: e.title,
+      coverUrl: e.coverUrl,
       isLatest: e.id === latest?.id,
       ig: e.ig ? (ig[e.ig.mediaId] ?? []).map(compactIg) : [],
       yt: e.yt ? (yt[e.yt.videoId] ?? []).map(compactYt) : [],

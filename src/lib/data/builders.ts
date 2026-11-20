@@ -1,5 +1,7 @@
 import { GATES } from "@/lib/domain/constants";
 import { deltaNear, type Delta } from "@/lib/domain/delta";
+import { diagnose, type Diagnosis } from "@/lib/domain/diagnose";
+import { episodeLabel } from "@/lib/domain/format";
 import { evaluateGates, type GateResult } from "@/lib/domain/gates";
 import { median } from "@/lib/domain/metrics";
 import { valueAt } from "@/lib/domain/resample";
@@ -62,6 +64,7 @@ export interface QuadrantPoint {
   saveRate: number;
   shareRate: number;
   views: number;
+  coverUrl: string | null;
   quadrant: Quadrant;
   strictMismatch: boolean;
   spread: GateResult["spread"];
@@ -73,6 +76,8 @@ export interface DashboardData {
   now: string;
   kpis: { igViews: KpiValue; ytViews: KpiValue; skipMedian: KpiValue; saveShareMedian: KpiValue };
   latest: LatestCard | null;
+  /** 홈 맨 위 "지금 상황" 문장(최신 편 기준) */
+  diagnosis: Diagnosis | null;
   quadrant: QuadrantPoint[];
   excluded: { key: string; epNo: number | null; reason: string }[];
   recent: EpisodeView[];
@@ -142,6 +147,7 @@ export function buildDashboard(input: {
         saveRate: g.saveRate ?? 0,
         shareRate: g.shareRate ?? 0,
         views: m.views ?? 0,
+        coverUrl: e.coverUrl,
         quadrant: g.quadrant,
         strictMismatch: g.strictMismatch,
         spread: g.spread,
@@ -168,6 +174,18 @@ export function buildDashboard(input: {
       saveShareMedian: { value: ss(recent5), compare: ss(prev5) },
     },
     latest: latestCard,
+    diagnosis: latestCard
+      ? diagnose({
+          label: episodeLabel(latestCard.episode) === "초안" ? "새 편" : `${latestCard.episode.epNo}편`,
+          gates: latestCard.episode.gates,
+          skipRate: latestCard.episode.ig?.latest?.skipRate ?? null,
+          views: latestCard.episode.ig?.latest?.views ?? null,
+          ageHours: latestCard.episode.ageHours,
+          viewsDelta: latestCard.igViewsDelta,
+          benchmarks: latestCard.benchmarks,
+          retroMissing: !latestCard.episode.retro72h,
+        })
+      : null,
     quadrant,
     excluded,
     recent: posted.slice(0, 5),

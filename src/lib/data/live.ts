@@ -4,10 +4,12 @@ import { requireAdmin } from "@/lib/auth/guard";
 import type { ChannelTotals, IgPoint, UntrackedItem, YtPoint } from "@/lib/domain/types";
 import type { Database } from "@/lib/supabase/database.types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { mapIgSeriesRow, mapOverviewRow, mapRunRow, mapYtSeriesRow } from "./live-mapping";
+import { coverPathOf, mapIgSeriesRow, mapOverviewRow, mapRunRow, mapYtSeriesRow } from "./live-mapping";
 import type { Repository } from "./repository";
 
 type Client = SupabaseClient<Database>;
+type OverviewRow = Database["public"]["Views"]["v_episode_overview"]["Row"];
+const COVER_TTL_SEC = 3600;
 const PAGE = 1000; // PostgREST 기본 최대 행 수
 
 async function fetchAll<T>(page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>) {
@@ -40,9 +42,22 @@ class SupabaseRepository implements Repository {
     return this.startedAt;
   }
 
+  /** 표지는 비공개 버킷이라 관리자 세션으로 1시간짜리 서명 주소를 한 번에 받는다(RLS: 관리자만 읽기). */
+  private async withCovers(rows: OverviewRow[]) {
+    const episodes = rows.map(mapOverviewRow);
+    const paths = [...new Set(rows.map(coverPathOf).filter((p): p is string => !!p))];
+    if (!paths.length) return episodes;
+    const { data } = await this.db.storage.from("covers").createSignedUrls(paths, COVER_TTL_SEC);
+    const urls = new Map((data ?? []).filter((d) => d.signedUrl && d.path).map((d) => [d.path!, d.signedUrl]));
+    return episodes.map((e, i) => {
+      const p = coverPathOf(rows[i]);
+      return p && urls.has(p) ? { ...e, coverUrl: urls.get(p)! } : e;
+    });
+  }
+
   async listEpisodes() {
     const rows = await fetchAll((from, to) => this.db.from("v_episode_overview").select("*").order("id").range(from, to));
-    return rows.map(mapOverviewRow);
+    return this.withCovers(rows);
   }
 
   async getEpisode(key: string) {
@@ -52,7 +67,7 @@ class SupabaseRepository implements Repository {
     const q = this.db.from("v_episode_overview").select("*");
     const { data, error } = await (draft ? q.eq("id", Number(draft[1])) : q.eq("ep_no", num)).maybeSingle();
     if (error) throw new Error(`조회 실패: ${error.message}`);
-    return data ? mapOverviewRow(data) : null;
+    return data ? (await this.withCovers([data]))[0] : null;
   }
 
   async getIgSeries(mediaIds: string[], maxHours?: number) {

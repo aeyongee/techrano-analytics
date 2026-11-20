@@ -1,10 +1,11 @@
 import type { SyncContext } from "../context";
+import { saveCovers } from "../covers";
 import { attachYtVideo } from "../episodes";
 import { HttpError } from "../http";
 import { isAnalyticsDue, isDataDue } from "../schedule";
 import type { AnalyticsStatus, PlatformSummary, SyncState, SyncStore, YtAnalyticsValues, YtSnapshotInput, YtVideoState } from "../types";
 import type { YoutubeClient } from "./client";
-import { kstDate, statsOf, toVideoState, type YtVideoItem } from "./parse";
+import { coverUrlsOf, kstDate, statsOf, toVideoState, type YtVideoItem } from "./parse";
 
 const MISSING_LIMIT = 3;
 /** Data API 조회수가 이만큼인데 Analytics가 0이면 아직 집계 전으로 본다. */
@@ -54,6 +55,24 @@ export async function discoverYoutube(
   for (const row of rows) {
     if ((await attachYtVideo(d.store, d.state, row)) === "draft") drafts++;
   }
+
+  // 공개된 영상만(비공개·예약 영상의 썸네일은 밖에서 받을 수 없다)
+  await saveCovers(
+    ctx,
+    d.store,
+    "yt",
+    rows
+      .filter((r) => r.isTracked && !r.coverPath && r.privacyStatus === "public")
+      .map((r) => ({
+        id: r.videoId,
+        path: `yt/${r.videoId}.jpg`,
+        urls: coverUrlsOf(items.get(r.videoId)!),
+        save: async (path) => {
+          r.coverPath = path;
+          await d.store.patchYtVideo(r.videoId, { coverPath: path });
+        },
+      })),
+  );
   return { newMedia, drafts, items };
 }
 

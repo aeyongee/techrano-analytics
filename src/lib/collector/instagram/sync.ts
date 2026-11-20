@@ -1,4 +1,5 @@
 import type { SyncContext } from "../context";
+import { saveCovers } from "../covers";
 import { attachIgMedia } from "../episodes";
 import { HttpError } from "../http";
 import { mapLimit } from "../limit";
@@ -29,6 +30,7 @@ export async function discoverInstagram(ctx: SyncContext, d: IgDeps): Promise<{ 
   const items = await d.client.listReels(d.igUserId, { all });
 
   const rows: IgMediaState[] = [];
+  const thumbs = new Map<string, string>();
   let newMedia = 0;
   for (const item of items) {
     const shortcode = shortcodeFromPermalink(item.permalink);
@@ -49,7 +51,9 @@ export async function discoverInstagram(ctx: SyncContext, d: IgDeps): Promise<{ 
       metricsProbedAt: prev?.metricsProbedAt ?? null,
       lastSnapshotAt: prev?.lastSnapshotAt ?? null,
       consecutiveFailures: prev?.consecutiveFailures ?? 0,
+      coverPath: prev?.coverPath ?? null,
     };
+    if (item.thumbnail_url) thumbs.set(row.mediaId, item.thumbnail_url);
     rows.push(row);
     d.state.ig.set(row.mediaId, row);
   }
@@ -59,6 +63,24 @@ export async function discoverInstagram(ctx: SyncContext, d: IgDeps): Promise<{ 
   for (const row of rows) {
     if ((await attachIgMedia(d.store, d.state, row)) === "draft") drafts++;
   }
+
+  // 표지는 만료되는 주소라 받아 두고, 이미 있는 편은 건너뛴다
+  await saveCovers(
+    ctx,
+    d.store,
+    "ig",
+    rows
+      .filter((r) => r.isTracked && !r.coverPath && thumbs.has(r.mediaId))
+      .map((r) => ({
+        id: r.mediaId,
+        path: `ig/${r.mediaId}.jpg`,
+        urls: [thumbs.get(r.mediaId)!],
+        save: async (path) => {
+          r.coverPath = path;
+          await d.store.patchIgMedia(r.mediaId, { coverPath: path });
+        },
+      })),
+  );
   return { newMedia, drafts };
 }
 

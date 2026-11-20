@@ -65,6 +65,8 @@ export interface EpisodeRaw {
   autoPaired: boolean;
   postedAt: string | null;
   updatedAt: string;
+  /** 표지 이미지 주소(실데이터는 1시간짜리 서명 주소, 데모는 그림). 없으면 null */
+  coverUrl: string | null;
   ig: {
     mediaId: string;
     shortcode: string;

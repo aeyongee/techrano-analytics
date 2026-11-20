@@ -155,7 +155,7 @@ export async function runSync(opts: RunSyncOptions, deps: SyncDeps): Promise<Syn
 
   let status: RunStatus;
   if (fatal || (ig.status === "error" && yt.status === "error")) status = "failed";
-  else if (ctx.errors.length || ctx.notes.length || ig.status === "error" || yt.status === "error") status = "partial";
+  else if (ctx.errors.some((e) => e.stage !== "cover") || ctx.notes.length || ig.status === "error" || yt.status === "error") status = "partial";
   else status = "success";
 
   const durationMs = clock() - startedMs;

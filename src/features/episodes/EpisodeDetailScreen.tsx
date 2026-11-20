@@ -1,6 +1,7 @@
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { cn } from "cn";
+import { Cover } from "@/components/Cover";
 import { GateBadge } from "@/components/GateBadge";
 import { Panel, PanelHeader } from "@/components/Panel";
 import { PlatformTag } from "@/components/PlatformTag";
@@ -46,7 +47,10 @@ export function EpisodeDetailScreen({ data, basePath }: { data: EpisodeDetailDat
         <Link href={`${basePath}/episodes`} className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground">
           <ArrowLeft className="size-3.5" aria-hidden />편 목록
         </Link>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
+        <div className="mt-3 flex gap-4">
+        <Cover src={e.coverUrl} alt={e.title} size="lg" className="xl:w-[120px]" />
+        <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-md bg-surface-2 px-2 py-0.5 text-sm font-bold tabular-nums">{e.epNo !== null ? `${e.epNo}편` : "초안"}</span>
           {e.isBenchmark ? <span className="rounded-full bg-sky/12 px-2 py-0.5 text-xs font-semibold text-sky">기준편</span> : null}
           {e.series ? <span className="text-xs text-muted-foreground">{[e.series, e.topic].filter(Boolean).join(" · ")}</span> : null}
@@ -76,6 +80,8 @@ export function EpisodeDetailScreen({ data, basePath }: { data: EpisodeDetailDat
             </a>
           ) : null}
         </p>
+        </div>
+        </div>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-12 xl:gap-5">

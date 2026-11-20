@@ -73,7 +73,7 @@ export class MemorySyncStore implements SyncStore {
   async upsertIgMedia(rows: IgMediaState[]) {
     for (const r of rows) {
       const prev = this.ig.get(r.mediaId);
-      this.ig.set(r.mediaId, prev ? { ...prev, shortcode: r.shortcode, permalink: r.permalink, captionHead: r.captionHead, postedAt: r.postedAt } : { ...r });
+      this.ig.set(r.mediaId, prev ? { ...prev, shortcode: r.shortcode, permalink: r.permalink, captionHead: r.captionHead, postedAt: r.postedAt } : { ...r, coverPath: null });
     }
   }
 
@@ -129,5 +129,11 @@ export class MemorySyncStore implements SyncStore {
   async insertYtSnapshots(rows: YtSnapshotInput[], runId: number | null) {
     this.ytSnapshots.push(...rows.map((r) => ({ ...r, runId })));
     return rows.length;
+  }
+
+  readonly covers = new Map<string, number>();
+
+  async uploadCover(path: string, bytes: ArrayBuffer) {
+    this.covers.set(path, bytes.byteLength);
   }
 }

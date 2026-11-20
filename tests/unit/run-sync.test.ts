@@ -204,6 +204,54 @@ describe("runSync", () => {
     expect(err.retryAfterSec).toBe(90);
   });
 
+  it("릴스 표지를 받아 저장하고, 다음 회차에는 다시 받지 않는다", async () => {
+    const store = seededStore();
+    const routes = world({
+      media: () => ({
+        body: {
+          data: [
+            { id: "M1", caption: "확정된 편", media_product_type: "REELS", timestamp: igTs(30), permalink: "https://www.instagram.com/reel/SC1/", thumbnail_url: "https://cdn.example/m1.jpg" },
+          ],
+        },
+      }),
+    });
+    const fetchImpl = (async (input: string | URL | Request, init?: RequestInit) => {
+      const u = String(input);
+      if (u.startsWith("https://cdn.example/") || u.startsWith("https://i.ytimg.com/")) {
+        return new Response(new Uint8Array([1, 2, 3]), { status: 200, headers: { "content-type": "image/jpeg" } });
+      }
+      return routes.impl(input, init);
+    }) as typeof fetch;
+    const s = await runSync({ trigger: "cli" }, { ...deps(store, routes.impl), fetchImpl });
+    expect(s.status).toBe("success");
+    expect(store.covers.get("ig/M1.jpg")).toBe(3);
+    expect(store.ig.get("M1")?.coverPath).toBe("ig/M1.jpg");
+    expect(store.yt.get("ytvideo0001")?.coverPath).toBe("yt/ytvideo0001.jpg"); // 공개 쇼츠
+    expect(store.yt.get("ytvideo0002")?.coverPath).toBeNull(); // 예약(비공개)은 받지 않는다
+
+    store.covers.clear();
+    await runSync({ trigger: "cli" }, { ...deps(store, routes.impl), fetchImpl, clock: () => NOW + 20 * 60_000 });
+    expect(store.covers.size).toBe(0);
+  });
+
+  it("표지를 못 받아도 수집은 success로 남는다", async () => {
+    const store = seededStore();
+    const routes = world({
+      media: () => ({
+        body: { data: [{ id: "M1", caption: "확정된 편", media_product_type: "REELS", timestamp: igTs(30), permalink: "https://www.instagram.com/reel/SC1/", thumbnail_url: "https://cdn.example/gone.jpg" }] },
+      }),
+    });
+    const fetchImpl = (async (input: string | URL | Request, init?: RequestInit) => {
+      const u = String(input);
+      if (u.startsWith("https://cdn.example/") || u.startsWith("https://i.ytimg.com/")) return new Response("", { status: 403 });
+      return routes.impl(input, init);
+    }) as typeof fetch;
+    const s = await runSync({ trigger: "cli" }, { ...deps(store, routes.impl), fetchImpl });
+    expect(s.status).toBe("success");
+    expect(s.errors.some((e) => e.stage === "cover")).toBe(true);
+    expect(store.ig.get("M1")?.coverPath).toBeNull();
+  });
+
   it("YT 초안 시각이 멀면 짝짓지 않고 각각 초안으로 둔다", async () => {
     const store = seededStore();
     const { impl } = world({

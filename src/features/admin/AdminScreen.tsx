@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { cn } from "cn";
+import { Cover } from "@/components/Cover";
 import { PageHeader, Panel, PanelHeader } from "@/components/Panel";
 import { PlatformTag } from "@/components/PlatformTag";
 import { useMode } from "@/components/shell/ModeProvider";
@@ -170,7 +171,9 @@ export function AdminScreen({ data }: { data: AdminData }) {
             {queue.length ? (
               <ul className="mt-2 divide-y divide-border">
                 {queue.map((e) => (
-                  <li key={e.id} className="flex flex-col gap-2 px-4 py-3 xl:px-5">
+                  <li key={e.id} className="flex gap-3 px-4 py-3 xl:px-5">
+                    <Cover src={e.coverUrl} alt={e.title} size="sm" />
+                    <div className="flex min-w-0 flex-1 flex-col gap-2">
                     <div className="flex items-center gap-2">
                       <span className={cn("rounded-md px-1.5 py-0.5 text-[11px] font-bold", e.status === "draft" ? "bg-amber/15 text-amber" : "bg-sky/14 text-sky")}>
                         {e.status === "draft" ? "초안" : `${e.epNo}편`}
@@ -215,6 +218,7 @@ export function AdminScreen({ data }: { data: AdminData }) {
                           추적 끄기
                         </Button>
                       ) : null}
+                    </div>
                     </div>
                   </li>
                 ))}
@@ -299,7 +303,12 @@ export function AdminScreen({ data }: { data: AdminData }) {
             <tbody>
               {episodes.map((e) => (
                 <tr key={e.id} className="border-b border-border last:border-0">
-                  <td className="px-4 py-2.5 font-bold xl:px-5">{e.epNo ?? "—"}</td>
+                  <td className="px-4 py-2 xl:px-5">
+                    <span className="flex items-center gap-3 font-bold">
+                      <Cover src={e.coverUrl} alt={e.title} size="xs" />
+                      {e.epNo ?? "—"}
+                    </span>
+                  </td>
                   <td className="max-w-[16rem] py-2.5">
                     <Link href={`${basePath}/episodes/${e.key}`} className="block truncate hover:text-sky hover:underline">
                       {e.title}

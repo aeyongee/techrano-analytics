@@ -17,7 +17,7 @@ export interface RunSyncOptions {
 
 export interface SyncError {
   platform: "ig" | "yt" | "yt_analytics" | "db";
-  stage: "config" | "auth" | "discover" | "insights" | "videos" | "analytics" | "write" | "pair";
+  stage: "config" | "auth" | "discover" | "insights" | "videos" | "analytics" | "write" | "pair" | "cover";
   target?: string;
   code: string;
   /** redact 후 300자 이하 */
@@ -57,6 +57,8 @@ export interface IgMediaState {
   metricsProbedAt: Date | null;
   lastSnapshotAt: Date | null;
   consecutiveFailures: number;
+  /** 저장소(covers 버킷) 안의 표지 경로 */
+  coverPath: string | null;
 }
 
 export type YtPrivacy = "public" | "unlisted" | "private";
@@ -73,6 +75,7 @@ export interface YtVideoState {
   analyticsCheckedAt: Date | null;
   analyticsReadyAt: Date | null;
   consecutiveFailures: number;
+  coverPath: string | null;
 }
 
 export interface EpisodeKey {
@@ -139,10 +142,10 @@ export interface RunFinish {
 }
 
 export type IgMediaPatch = Partial<
-  Pick<IgMediaState, "isTracked" | "unsupportedMetrics" | "metricsProbedAt" | "lastSnapshotAt" | "consecutiveFailures">
+  Pick<IgMediaState, "isTracked" | "unsupportedMetrics" | "metricsProbedAt" | "lastSnapshotAt" | "consecutiveFailures" | "coverPath">
 >;
 export type YtVideoPatch = Partial<
-  Pick<YtVideoState, "isTracked" | "lastSnapshotAt" | "analyticsCheckedAt" | "analyticsReadyAt" | "consecutiveFailures">
+  Pick<YtVideoState, "isTracked" | "lastSnapshotAt" | "analyticsCheckedAt" | "analyticsReadyAt" | "consecutiveFailures" | "coverPath">
 >;
 
 export interface SyncStore {
@@ -160,6 +163,8 @@ export interface SyncStore {
   mergeEpisodes(sourceId: number, targetId: number, auto: boolean): Promise<void>;
   insertIgSnapshots(rows: IgSnapshotInput[], runId: number | null): Promise<number>;
   insertYtSnapshots(rows: YtSnapshotInput[], runId: number | null): Promise<number>;
+  /** 표지 파일을 covers 버킷에 올린다(같은 경로면 덮어쓴다). */
+  uploadCover(path: string, bytes: ArrayBuffer, contentType: string): Promise<void>;
 }
 
 export class SyncBusyError extends Error {

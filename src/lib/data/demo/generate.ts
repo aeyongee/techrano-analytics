@@ -1,5 +1,6 @@
 import { dataIntervalMinutes } from "@/lib/domain/schedule";
 import type { EpisodeRaw, IgPoint, SyncRunRow, UntrackedItem, YtPoint } from "@/lib/domain/types";
+import { demoCover } from "./cover";
 import { between, hashString, mulberry32 } from "./prng";
 import { DEMO_EPISODES, DEMO_SCHEDULED, type Archetype, type DemoEpisodeSpec } from "./scenarios";
 
@@ -162,6 +163,7 @@ function buildEpisode(spec: DemoEpisodeSpec, anchor: number) {
     autoPaired: spec.autoPaired ?? false,
     postedAt: iso(Math.min(igPosted, ytPosted)),
     updatedAt: iso(anchor - 2 * H),
+    coverUrl: demoCover(spec.title, spec.id),
     ig: {
       mediaId: `demo-ig-${spec.id}`,
       shortcode: `DEMO${spec.id}`,
@@ -257,6 +259,7 @@ export function generateDemoWorld(anchor: Date): DemoWorld {
     autoPaired: false,
     postedAt: null,
     updatedAt: iso(a - 3 * H),
+    coverUrl: demoCover(DEMO_SCHEDULED.title, DEMO_SCHEDULED.id),
     ig: null,
     yt: {
       videoId: "demoVideo13",

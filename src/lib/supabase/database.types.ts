@@ -37,6 +37,7 @@ type IgMediaRow = {
   metrics_probed_at: string | null;
   last_snapshot_at: string | null;
   consecutive_failures: number;
+  cover_path: string | null;
 };
 
 type YtVideoRow = {
@@ -53,6 +54,7 @@ type YtVideoRow = {
   analytics_checked_at: string | null;
   analytics_ready_at: string | null;
   consecutive_failures: number;
+  cover_path: string | null;
 };
 
 type SyncRunRow = {
@@ -227,6 +229,8 @@ export type Database = {
             a_shares: number;
             a_subscribers_gained: number;
             posted_at: string;
+            ig_cover_path: string;
+            yt_cover_path: string;
           }
         >;
         Relationships: [];

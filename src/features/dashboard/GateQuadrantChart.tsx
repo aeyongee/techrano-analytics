@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { CartesianGrid, ReferenceArea, ReferenceLine, ResponsiveContainer, Scatter, ScatterChart, XAxis, YAxis } from "recharts";
 import { cn } from "cn";
+import { Cover } from "@/components/Cover";
 import { GateBadge } from "@/components/GateBadge";
 import { Panel, PanelHeader } from "@/components/Panel";
 import type { DashboardData, QuadrantPoint } from "@/lib/data/builders";
@@ -143,7 +144,9 @@ export function GateQuadrantChart({
 
       <div className="mt-auto border-t border-border px-4 py-3 xl:px-5">
         {selected ? (
-          <div className="flex flex-col gap-2">
+          <div className="flex gap-3">
+          <Cover src={selected.coverUrl} alt={selected.title} size="md" />
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
             <div className="flex flex-wrap items-center gap-2">
               <span className="size-2.5 rounded-full" style={{ background: COLOR[selected.quadrant] }} aria-hidden />
               <span className="text-xs font-semibold" style={{ color: COLOR[selected.quadrant] }}>
@@ -173,6 +176,7 @@ export function GateQuadrantChart({
             ) : (
               <GateBadge label="2차 확산" verdict={selected.spread} className="self-start" />
             )}
+          </div>
           </div>
         ) : (
           <p className="text-xs text-muted-foreground">아직 판정할 수 있는 편이 없다.</p>

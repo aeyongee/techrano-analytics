@@ -3,6 +3,7 @@
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { Cover } from "@/components/Cover";
 import { GateBadge } from "@/components/GateBadge";
 import { PageHeader, Panel } from "@/components/Panel";
 import { Segmented } from "@/components/Segmented";
@@ -75,7 +76,9 @@ export function EpisodeListScreen({ data }: { data: EpisodeListData }) {
       <ul className="flex flex-col gap-2.5 xl:hidden">
         {shown.map((e) => (
           <li key={e.key}>
-            <Link href={`${basePath}/episodes/${e.key}`} className="block rounded-xl border border-border bg-card p-3.5 shadow-block active:translate-y-px">
+            <Link href={`${basePath}/episodes/${e.key}`} className="flex gap-3 rounded-xl border border-border bg-card p-3 shadow-block active:translate-y-px">
+              <Cover src={e.coverUrl} alt={e.title} size="md" />
+              <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <span className="grid h-6 min-w-8 place-items-center rounded-md bg-surface-2 px-1.5 text-xs font-bold tabular-nums">{e.epNo ?? "초안"}</span>
                 <span className="min-w-0 flex-1 truncate text-sm font-semibold">{e.title}</span>
@@ -91,6 +94,7 @@ export function EpisodeListScreen({ data }: { data: EpisodeListData }) {
                 <GateBadge label="1차" verdict={e.gates.hook} />
                 <GateBadge label="2차" verdict={e.gates.spread} />
                 {e.isBenchmark ? <span className="rounded-full bg-sky/12 px-2 py-0.5 text-xs font-semibold text-sky">기준편</span> : null}
+              </div>
               </div>
             </Link>
           </li>
@@ -116,7 +120,12 @@ export function EpisodeListScreen({ data }: { data: EpisodeListData }) {
           <tbody>
             {shown.map((e) => (
               <tr key={e.key} className="border-b border-border last:border-0 hover:bg-accent/30">
-                <td className="px-5 py-3 font-bold">{e.epNo ?? <span className="text-amber">초안</span>}</td>
+                <td className="px-5 py-2">
+                  <span className="flex items-center gap-3 font-bold">
+                    <Cover src={e.coverUrl} alt={e.title} size="xs" />
+                    {e.epNo ?? <span className="text-amber">초안</span>}
+                  </span>
+                </td>
                 <td className="max-w-[18rem] py-3">
                   <Link href={`${basePath}/episodes/${e.key}`} className="block truncate font-semibold hover:text-sky hover:underline">
                     {e.title}

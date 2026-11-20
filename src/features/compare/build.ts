@@ -12,6 +12,7 @@ export interface BuiltSeries {
   key: string;
   label: string;
   title: string;
+  coverUrl: string | null;
   color: string;
   isLatest: boolean;
   sparse: boolean;
@@ -40,6 +41,7 @@ export function buildCompare(selected: CompareSeries[], platform: ComparePlatfor
       key: `s${i}`,
       label: seriesLabel(s),
       title: s.title,
+      coverUrl: s.coverUrl,
       color: SERIES_COLORS[i % SERIES_COLORS.length],
       isLatest: s.isLatest,
       sparse: real.length > 0 && real.length < SPARSE_BELOW,

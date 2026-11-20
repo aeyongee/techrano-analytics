@@ -212,6 +212,21 @@ describe("초안 합치기와 짝 해제", () => {
   });
 });
 
+describe("표지", () => {
+  it("관리자만 표지 경로를 보고, 비관리자는 저장소 파일을 못 본다", async () => {
+    await db.exec(`
+      update public.ig_media set cover_path = 'ig/17900000000000001.jpg';
+      insert into storage.objects (bucket_id, name) values ('covers', 'ig/17900000000000001.jpg');
+    `);
+    const [row] = await queryAs<{ ig_cover_path: string }>(db, "authenticated", ADMIN_CLAIMS, "select ig_cover_path from public.v_episode_overview");
+    expect(row.ig_cover_path).toBe("ig/17900000000000001.jpg");
+    expect(await queryAs(db, "authenticated", ADMIN_CLAIMS, "select * from storage.objects")).toHaveLength(1);
+    expect(await queryAs(db, "authenticated", USER_CLAIMS, "select * from storage.objects")).toHaveLength(0);
+    const [bucket] = (await db.query<{ public: boolean }>("select public from storage.buckets where id = 'covers'")).rows;
+    expect(bucket.public).toBe(false);
+  });
+});
+
 describe("start_sync_run", () => {
   const start = (gap = 0) =>
     queryAs<{ start_sync_run: number }>(db, "service_role", null, "select public.start_sync_run('cron', $1)", [gap]);

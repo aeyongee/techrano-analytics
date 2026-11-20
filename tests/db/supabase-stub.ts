@@ -20,6 +20,14 @@ grant usage on schema auth to anon, authenticated, service_role;
 grant execute on function auth.jwt() to anon, authenticated, service_role;
 
 grant usage on schema public to anon, authenticated, service_role;
+
+-- Supabase Storage의 최소 모양(표지 버킷 정책을 적용할 수 있을 만큼)
+create schema storage;
+create table storage.buckets (id text primary key, name text not null, public boolean default false);
+create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text references storage.buckets (id), name text);
+alter table storage.objects enable row level security;
+grant usage on schema storage to anon, authenticated, service_role;
+grant select on storage.objects to authenticated;
 alter default privileges for role postgres in schema public grant all on tables to anon, authenticated, service_role;
 alter default privileges for role postgres in schema public grant all on sequences to anon, authenticated, service_role;
 alter default privileges for role postgres in schema public grant all on functions to anon, authenticated, service_role;

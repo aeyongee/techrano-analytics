@@ -53,6 +53,7 @@ function igFromRow(r: TableRow<"ig_media">): IgMediaState {
     metricsProbedAt: date(r.metrics_probed_at),
     lastSnapshotAt: date(r.last_snapshot_at),
     consecutiveFailures: r.consecutive_failures,
+    coverPath: r.cover_path ?? null,
   };
 }
 
@@ -69,6 +70,7 @@ function ytFromRow(r: TableRow<"yt_videos">): YtVideoState {
     analyticsCheckedAt: date(r.analytics_checked_at),
     analyticsReadyAt: date(r.analytics_ready_at),
     consecutiveFailures: r.consecutive_failures,
+    coverPath: r.cover_path ?? null,
   };
 }
 
@@ -169,6 +171,7 @@ export class SupabaseSyncStore implements SyncStore {
     if (p.metricsProbedAt !== undefined) row.metrics_probed_at = iso(p.metricsProbedAt);
     if (p.lastSnapshotAt !== undefined) row.last_snapshot_at = iso(p.lastSnapshotAt);
     if (p.consecutiveFailures !== undefined) row.consecutive_failures = p.consecutiveFailures;
+    if (p.coverPath !== undefined) row.cover_path = p.coverPath;
     ok("ig_media update", await this.db.from("ig_media").update(row).eq("media_id", mediaId));
   }
 
@@ -179,6 +182,7 @@ export class SupabaseSyncStore implements SyncStore {
     if (p.analyticsCheckedAt !== undefined) row.analytics_checked_at = iso(p.analyticsCheckedAt);
     if (p.analyticsReadyAt !== undefined) row.analytics_ready_at = iso(p.analyticsReadyAt);
     if (p.consecutiveFailures !== undefined) row.consecutive_failures = p.consecutiveFailures;
+    if (p.coverPath !== undefined) row.cover_path = p.coverPath;
     ok("yt_videos update", await this.db.from("yt_videos").update(row).eq("video_id", videoId));
   }
 
@@ -252,5 +256,10 @@ export class SupabaseSyncStore implements SyncStore {
         .select("id"),
     );
     return data.length;
+  }
+
+  async uploadCover(path: string, bytes: ArrayBuffer, contentType: string) {
+    const { error } = await this.db.storage.from("covers").upload(path, bytes, { contentType, upsert: true });
+    if (error) throw new StoreError("표지 업로드", error);
   }
 }

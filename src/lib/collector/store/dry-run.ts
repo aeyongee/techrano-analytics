@@ -59,4 +59,7 @@ export class DryRunStore implements SyncStore {
     this.ytSnapshots.push(...rows);
     return rows.length;
   }
+  async uploadCover(path: string, bytes: ArrayBuffer) {
+    this.writes.push(`표지 ${path} (${Math.round(bytes.byteLength / 1024)}KB)`);
+  }
 }
