@@ -91,19 +91,23 @@ gh repo create techrano-analytics --public --source . --push
 3. 배포가 끝나면 Supabase → Authentication → URL Configuration의 Site URL을 배포 주소로 바꾼다.
 4. 폰 브라우저로 배포 주소를 열어 관리자 로그인 → 공유 → 홈 화면에 추가. 홈 화면 앱은 Safari와 쿠키가 따로라 앱 안에서 한 번 더 로그인한다.
 
-## 6. 15분 크론 켜기 (Claude, 사용자 승인 후)
+## 6. 15분 예약 켜기 (Claude, 사용자 승인 후)
+
+수집 예약은 Supabase DB 안의 pg_cron이 맡는다(GitHub Actions 예약은 시각을 보장하지 않고 몇 시간씩 빠져서 쓰지 않는다).
+`CRON_SECRET`은 Supabase Vault에 넣고, 예약 SQL은 이름으로만 꺼내 쓴다.
 
 ```bash
-gh secret set SYNC_URL --body "https://<배포 주소>/api/cron/sync"
-grep '^CRON_SECRET=' .env.local | cut -d= -f2- | gh secret set CRON_SECRET
+npx tsx --env-file=.env.local scripts/setup-db-cron.ts --url "https://<배포 주소>/api/cron/sync"
+npx tsx --env-file=.env.local scripts/setup-db-cron.ts --status   # 2·17·32·47분 뒤 실행 기록과 응답 200을 본다
+# 주간 RLS 점검(ci.yml)용
 gh secret set NEXT_PUBLIC_SUPABASE_URL --body "https://<프로젝트 ref>.supabase.co"
 grep '^NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=' .env.local | cut -d= -f2- | gh secret set NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-gh workflow run sync.yml                          # 한 번 돌려 보고
-gh run list --workflow sync.yml --limit 3         # 15~30분 뒤 예약 실행이 쌓이는지 본다
 ```
+
+`CRON_SECRET`을 바꾸면 Vercel 환경 변수와 Vault를 함께 바꾼다(같은 스크립트를 다시 돌리면 Vault 값이 바뀐다).
 
 ## 그 뒤
 
 - 11편을 올리면 15분 안에 관리 화면 "확인할 편"에 초안이 생긴다. 번호·계열·첫 컷 훅을 넣어 확정한다.
 - 게시 72시간이 지나면 편 상세에 복기 알림이 뜬다.
-- 상단 점이 빨갛게 바뀌면(2시간 넘게 수집 없음) GitHub Actions 탭에서 sync 워크플로가 꺼졌는지 본다. 공개 레포는 60일 동안 활동이 없으면 예약 실행이 꺼진다(keepalive가 매달 다시 켠다).
+- 상단 점이 빨갛게 바뀌면(2시간 넘게 수집 없음) `setup-db-cron.ts --status`로 예약 실행 기록과 응답 코드를 본다(401이면 Vault와 Vercel의 CRON_SECRET이 다르다).

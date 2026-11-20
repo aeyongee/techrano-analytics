@@ -1,6 +1,6 @@
 /**
  * Supabase DB 안의 예약(pg_cron)으로 15분마다 수집 주소를 부른다.
- * GitHub Actions 예약은 시각을 보장하지 않고 몇 시간씩 빠지기도 해서 이것을 주 예약으로 쓴다.
+ * 처음에는 GitHub Actions 예약을 썼지만, 켠 뒤 세 시간 넘게 한 번도 돌지 않아 이것으로 바꿨다.
  * CRON_SECRET은 Supabase Vault(cron_secret)에만 넣고, 예약 SQL은 이름으로만 꺼내 쓴다.
  * PGlite 테스트에는 pg_cron·pg_net이 없어서 마이그레이션이 아니라 이 스크립트로 한 번 적용한다(다시 돌려도 된다).
  *
@@ -64,7 +64,7 @@ const existing = await query<{ id: string }>(`select id from vault.secrets where
 if (existing[0]) await query(`select vault.update_secret(${lit(existing[0].id)}, ${lit(secret)})`);
 else await query(`select vault.create_secret(${lit(secret)}, ${lit(SECRET_NAME)}, 'techrano 수집 주소 호출용')`);
 
-// 같은 이름이면 cron.schedule이 덮어쓴다. GitHub 예약과 겹치지 않게 2분부터 15분 간격.
+// 같은 이름이면 cron.schedule이 덮어쓴다. 정각 몰림을 피해 2분부터 15분 간격.
 await query(`
   select cron.schedule(${lit(JOB)}, '2,17,32,47 * * * *', $job$
     select net.http_post(

@@ -15,7 +15,7 @@ function authorized(header: string | null, secret: string): boolean {
 }
 
 /**
- * GitHub Actions가 15분마다 부른다. 공개 레포의 Actions 로그에 남으므로 응답에는 상태와 건수만 담는다.
+ * Supabase DB 예약(pg_cron + pg_net)이 15분마다 부른다. 응답은 상태와 건수만 담는다.
  * 오류 상세는 관리자 화면(sync_runs)에서 본다.
  */
 export async function POST(request: Request) {

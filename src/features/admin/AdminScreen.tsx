@@ -28,7 +28,7 @@ const RUN_STATUS: Record<SyncRunRow["status"], { label: string; cls: string }> =
   running: { label: "실행 중", cls: "bg-sky/14 text-sky" },
   abandoned: { label: "중단", cls: "bg-pending/14 text-pending" },
 };
-const TRIGGER: Record<SyncRunRow["trigger"], string> = { cron: "크론", manual: "수동", cli: "CLI" };
+const TRIGGER: Record<SyncRunRow["trigger"], string> = { cron: "자동", manual: "수동", cli: "CLI" };
 
 function HealthCard({ title, h, now }: { title: React.ReactNode; h: PlatformHealth; now: string }) {
   const ok = h.status === "ok";
@@ -144,7 +144,7 @@ export function AdminScreen({ data }: { data: AdminData }) {
         <div className="flex min-w-0 flex-col gap-1 rounded-xl border border-border bg-card px-4 py-3 shadow-block">
           <span className="text-xs text-muted-foreground">마지막 성공 수집</span>
           <span className="text-base font-bold tabular-nums">{data.lastSuccessAt ? formatRelative(data.lastSuccessAt, data.now) : "없음"}</span>
-          <span className="text-[11px] text-muted-foreground tabular-nums">{formatKst(data.lastSuccessAt)} · 크론 15분 간격</span>
+          <span className="text-[11px] text-muted-foreground tabular-nums">{formatKst(data.lastSuccessAt)} · DB 예약 15분 간격</span>
         </div>
         <HealthCard title={<><PlatformTag platform="ig" />인스타</>} h={data.health.ig} now={data.now} />
         <HealthCard title={<><PlatformTag platform="yt" />유튜브</>} h={data.health.yt} now={data.now} />
@@ -374,7 +374,7 @@ export function AdminScreen({ data }: { data: AdminData }) {
       </Dialog>
       {mode === "demo" ? (
         <p className="text-center text-[11px] text-muted-foreground">
-          실서비스에서는 Sync Now가 인스타·유튜브 API를 직접 부르고, 결과가 이 로그에 쌓인다. 크론은 15분마다 돈다. 지금 보이는 기록은 가상이다.
+          실서비스에서는 Sync Now가 인스타·유튜브 API를 직접 부르고, 결과가 이 로그에 쌓인다. DB 예약이 15분마다 부른다. 지금 보이는 기록은 가상이다.
         </p>
       ) : null}
     </div>

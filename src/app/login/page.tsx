@@ -15,7 +15,7 @@ const NOTICE: Record<string, string> = {
   config: "이 배포에는 실데이터 연결이 없습니다. 데모를 둘러봐 주세요.",
 };
 
-const STACK = ["Next.js 16", "TypeScript", "Supabase RLS", "Recharts", "GitHub Actions", "Vercel"];
+const STACK = ["Next.js 16", "TypeScript", "Supabase RLS", "Recharts", "pg_cron", "Vercel"];
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ e?: string }> }) {
   const configured = hasLiveConfig();
@@ -53,7 +53,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <ul className="flex flex-col gap-2 text-sm text-muted-foreground">
           <li className="flex gap-2">
             <Timer className="mt-0.5 size-4 shrink-0 text-sky" aria-hidden />
-            맥북이 꺼져 있어도 GitHub Actions가 15분마다 수집하고, 게시 후 경과 시간에 맞춰 간격을 늘립니다.
+            맥북이 꺼져 있어도 DB 예약(pg_cron)이 15분마다 수집하고, 게시 후 경과 시간에 맞춰 간격을 늘립니다.
           </li>
           <li className="flex gap-2">
             <ShieldCheck className="mt-0.5 size-4 shrink-0 text-sky" aria-hidden />

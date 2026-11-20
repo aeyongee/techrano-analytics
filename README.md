@@ -3,7 +3,7 @@
 1인 IT·보안 숏폼 채널 **@tech.rano**의 인스타 릴스와 유튜브 쇼츠 성과를 게시 직후부터 15분마다 쌓아, 실제 운영 기록에서 찾은 **2단계 알고리즘 관문**으로 읽는 대시보드입니다.
 
 - 실데이터는 관리자만 봅니다. 로그인 화면의 **게스트 데모 체험하기**를 누르면 가상 데이터로 모든 화면과 동작을 써 볼 수 있습니다(`/demo`).
-- 운영 비용 월 0원: Vercel Hobby, Supabase Free, GitHub Actions(공개 레포).
+- 운영 비용 월 0원: Vercel Hobby, Supabase Free(pg_cron 예약 포함).
 - 이 레포에는 실제 수치와 메모가 들어 있지 않습니다. 데모 데이터는 코드가 만든 가상 값입니다.
 
 | 홈 | T+ 비교 |
@@ -30,8 +30,8 @@
 
 ```mermaid
 flowchart TB
-  subgraph GH["GitHub Actions"]
-    S["sync.yml · 15분 크론"]
+  subgraph DBC["Supabase pg_cron"]
+    S["15분 예약 · pg_net"]
   end
   subgraph V["Vercel · Next.js 16"]
     D["/demo/** · 가상 데이터"]
@@ -47,7 +47,7 @@ flowchart TB
   A -- "관리자 세션 · RLS로 읽기" --> DB
 ```
 
-- 크론, Sync Now, 로컬 CLI가 같은 `runSync()`를 씁니다. Meta·Google 토큰은 Vercel에만 있고, GitHub Actions는 엔드포인트를 부르기만 합니다.
+- 크론, Sync Now, 로컬 CLI가 같은 `runSync()`를 씁니다. Meta·Google 토큰은 Vercel에만 있고, DB 예약은 엔드포인트를 부르기만 합니다(호출용 비밀값은 Supabase Vault). GitHub Actions 예약은 켠 뒤 몇 시간씩 한 번도 돌지 않아 DB 예약으로 바꿨습니다.
 - 게시 후 6시간까지는 15분, 72시간까지는 1시간, 그 뒤로는 점점 간격을 늘려 스냅샷을 찍습니다. YouTube Analytics는 집계가 24~48시간 늦어 게시 20시간 뒤부터 묻습니다.
 - 새 릴스·쇼츠가 올라오면 초안 편을 만들고, 12시간 안에 올라온 인스타·유튜브 초안은 자동으로 짝짓습니다.
 - 한 플랫폼이 실패해도 다른 쪽은 끝까지 수집하고(`partial`), 오류 메시지는 토큰을 가린 뒤 저장합니다.
