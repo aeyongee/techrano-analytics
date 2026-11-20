@@ -2,11 +2,12 @@ name: sync
 
 # 15분마다 Vercel의 /api/cron/sync를 부른다. 수집 자체와 Meta·Google 토큰은 Vercel에만 있다.
 # GitHub 예약 실행은 몇 분~수십 분 늦거나 빠질 수 있다. 수집 간격은 실제 시각 기준으로 판정하므로 괜찮다.
+# 정각(:00)은 GitHub 예약이 몰려 밀리기 쉬워 7분부터 15분 간격으로 돈다.
 # 공개 레포라 로그가 공개된다. 응답 본문은 찍지 않고 상태와 건수만 남긴다.
 
 on:
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "7,22,37,52 * * * *"
   workflow_dispatch:
     inputs:
       force:
