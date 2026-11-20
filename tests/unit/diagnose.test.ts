@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { diagnose } from "@/lib/domain/diagnose";
-import { evaluateGates } from "@/lib/domain/gates";
-import type { IgMetrics } from "@/lib/domain/types";
+import { diagnose, diagnoseYt } from "@/lib/domain/diagnose";
+import { evaluateGates, evaluateYtGates } from "@/lib/domain/gates";
+import type { IgMetrics, YtAnalyticsMetrics } from "@/lib/domain/types";
 
 const m = (o: Partial<IgMetrics>): IgMetrics => ({
   views: 5000, reach: 4000, saved: 2, shares: 10, comments: 0, likes: 30, avgWatchMs: 12000, skipRate: 36.5, ...o,
@@ -50,5 +50,36 @@ describe("지금 상황 문장", () => {
 
   it("72시간이 지났는데 복기가 없으면 복기를 먼저 권한다", () => {
     expect(run({}, { ageHours: 80, retroMissing: true }).next).toContain("복기");
+  });
+});
+
+describe("유튜브 지금 상황", () => {
+  const a = (o: Partial<YtAnalyticsMetrics>): YtAnalyticsMetrics => ({
+    views: 1200, engagedViews: 420, avgViewDurationSec: 24, avgViewPct: 75, shares: 1, subscribersGained: 1, ...o,
+  });
+  const yt = (m: YtAnalyticsMetrics | null, extra: Partial<Parameters<typeof diagnoseYt>[0]> = {}) =>
+    diagnoseYt({ label: "10편", gates: evaluateYtGates(m), hasAnalytics: m !== null, views: m?.views ?? 900, ageHours: 30, ...extra });
+
+  it("Analytics 전이면 기다린다", () => {
+    const d = yt(null);
+    expect(d.tone).toBe("wait");
+    expect(d.lines[0]).toContain("24~48시간");
+  });
+
+  it("둘 다 통과", () => {
+    const d = yt(a({}));
+    expect(d.tone).toBe("good");
+    expect(d.lines[0]).toBe("유효 조회 비율 35.0%로 1차 관문(30% 이상)을 넘었다.");
+    expect(d.lines[1]).toBe("평균 시청률 75.0%로 2차 관문(70% 이상)도 넘었다.");
+  });
+
+  it("초반 이탈은 첫 1초를, 끝까지 못 보면 길이를 고치라고 한다", () => {
+    expect(yt(a({ engagedViews: 240 })).lines[0]).toBe("유효 조회 비율 20.0%로 1차 관문(30% 이상)보다 10.0%p 낮다.");
+    expect(yt(a({ engagedViews: 240 })).next).toContain("첫 1초");
+    expect(yt(a({ avgViewPct: 55 })).next).toContain("길이");
+  });
+
+  it("조회가 적으면 판정하지 않는다", () => {
+    expect(yt(a({ views: 120, engagedViews: 40 })).tone).toBe("wait");
   });
 });

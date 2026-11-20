@@ -1,11 +1,11 @@
-import { GATES } from "@/lib/domain/constants";
+import { GATES, YT_GATES } from "@/lib/domain/constants";
 import { deltaNear, type Delta } from "@/lib/domain/delta";
-import { diagnose, type Diagnosis } from "@/lib/domain/diagnose";
-import { episodeLabel } from "@/lib/domain/format";
-import { evaluateGates, type GateResult } from "@/lib/domain/gates";
+import { diagnose, diagnoseYt, type Diagnosis } from "@/lib/domain/diagnose";
+import { episodeLabel, formatCount, formatPct, formatRate, formatSignedCount } from "@/lib/domain/format";
+import { evaluateGates, evaluateYtGates, type GateResult, type YtGateResult } from "@/lib/domain/gates";
 import { median } from "@/lib/domain/metrics";
 import { valueAt } from "@/lib/domain/resample";
-import type { ChannelTotals, EpisodeRaw, IgPoint, Quadrant, SyncRunRow, YtPoint } from "@/lib/domain/types";
+import type { ChannelTotals, EpisodeRaw, IgPoint, Quadrant, SyncRunRow, Verdict, YtPoint } from "@/lib/domain/types";
 import type { Repository } from "./repository";
 
 // ── 공통 ────────────────────────────────────────────────────────────
@@ -13,6 +13,7 @@ import type { Repository } from "./repository";
 export interface EpisodeView extends EpisodeRaw {
   ageHours: number | null;
   gates: GateResult;
+  ytGates: YtGateResult;
 }
 
 const EMPTY_IG = { views: null, reach: null, saved: null, shares: null, comments: null, likes: null, avgWatchMs: null, skipRate: null };
@@ -22,6 +23,7 @@ export function toView(e: EpisodeRaw, now: Date): EpisodeView {
     ...e,
     ageHours: e.postedAt ? (now.getTime() - Date.parse(e.postedAt)) / 3_600_000 : null,
     gates: evaluateGates(e.ig?.latest ?? EMPTY_IG),
+    ytGates: evaluateYtGates(e.yt?.analytics ?? null),
   };
 }
 
@@ -39,6 +41,7 @@ export function buildShellStatus(runs: SyncRunRow[], now: Date): ShellStatus {
 }
 
 // ── 홈 ─────────────────────────────────────────────────────────────
+// 인스타와 유튜브는 알고리즘이 달라 탭을 나눠 따로 판정한다.
 
 export interface KpiValue {
   value: number | null;
@@ -46,54 +49,84 @@ export interface KpiValue {
   compare: number | null;
 }
 
+type Benchmark = { key: string; epNo: number | null; title: string; viewsAtAge: number | null };
+
 export interface LatestCard {
   episode: EpisodeView;
   igViewsDelta: Delta | null;
   skipDelta: Delta | null;
   ytViewsDelta: Delta | null;
   sparkline: { h: number; v: number }[];
-  benchmarks: { key: string; epNo: number | null; title: string; viewsAtAge: number | null }[];
+  benchmarks: Benchmark[];
 }
 
+export interface YtLatestCard {
+  episode: EpisodeView;
+  viewsDelta: Delta | null;
+  sparkline: { h: number; v: number }[];
+  benchmarks: Benchmark[];
+}
+
+/** 관문 지도의 점. x·y 뜻은 플랫폼마다 다르다(인스타: 건너뛰기·저장+공유, 유튜브: 유효 조회 비율·평균 시청률). */
 export interface QuadrantPoint {
   key: string;
   epNo: number | null;
   title: string;
-  skipRate: number;
-  saveShareRate: number;
-  saveRate: number;
-  shareRate: number;
+  x: number;
+  y: number;
   views: number;
   coverUrl: string | null;
   quadrant: Quadrant;
+  /** 2차 관문 판정(인스타 확산, 유튜브 끝까지) */
+  second: Verdict;
+  /** 위쪽에 있지만 2차 관문 미달(인스타 △) */
   strictMismatch: boolean;
-  spread: GateResult["spread"];
+  facts: { label: string; value: string }[];
+  note: string | null;
   isLatest: boolean;
+}
+
+type Excluded = { key: string; epNo: number | null; reason: string };
+
+export interface IgHome {
+  kpis: { views: KpiValue; reach: KpiValue; skipMedian: KpiValue; saveShareMedian: KpiValue };
+  latest: LatestCard | null;
+  /** 홈 맨 위 "지금 상황" 문장(최신 편 기준) */
+  diagnosis: Diagnosis | null;
+  quadrant: QuadrantPoint[];
+  excluded: Excluded[];
+  recent: EpisodeView[];
+}
+
+export interface YtHome {
+  kpis: { views: KpiValue; engagedMedian: KpiValue; avgViewPctMedian: KpiValue; subsRecent: KpiValue };
+  latest: YtLatestCard | null;
+  diagnosis: Diagnosis | null;
+  quadrant: QuadrantPoint[];
+  excluded: Excluded[];
+  recent: EpisodeView[];
 }
 
 export interface DashboardData {
   mode: Repository["mode"];
   now: string;
-  kpis: { igViews: KpiValue; ytViews: KpiValue; skipMedian: KpiValue; saveShareMedian: KpiValue };
-  latest: LatestCard | null;
-  /** 홈 맨 위 "지금 상황" 문장(최신 편 기준) */
-  diagnosis: Diagnosis | null;
-  quadrant: QuadrantPoint[];
-  excluded: { key: string; epNo: number | null; reason: string }[];
-  recent: EpisodeView[];
+  ig: IgHome;
+  yt: YtHome;
 }
 
-export function buildDashboard(input: {
-  mode: Repository["mode"];
-  episodes: EpisodeRaw[];
-  igSeries: Record<string, IgPoint[]>;
-  ytSeries: Record<string, YtPoint[]>;
-  totalsNow: ChannelTotals;
-  totalsWeekAgo: ChannelTotals;
-  now: Date;
-}): DashboardData {
-  const eps = input.episodes.filter((e) => e.status !== "archived").map((e) => toView(e, input.now));
-  const posted = eps.filter((e) => e.postedAt).sort(byPostedDesc);
+const labelOf = (e: EpisodeView) => (episodeLabel(e) === "초안" ? "새 편" : `${e.epNo}편`);
+
+function benchmarksAt(eps: EpisodeView[], latest: EpisodeView, age: number, seriesOf: (e: EpisodeView) => { hours: number; value: number | null }[] | null): Benchmark[] {
+  return eps
+    .filter((e) => e.isBenchmark && e.id !== latest.id)
+    .flatMap((b) => {
+      const series = seriesOf(b);
+      return series ? [{ key: b.key, epNo: b.epNo, title: b.title, viewsAtAge: valueAt(series, age, { maxGapHours: 6, anchorZero: true }) }] : [];
+    })
+    .slice(0, 3);
+}
+
+function buildIgHome(eps: EpisodeView[], posted: EpisodeView[], input: DashboardInput, hasWeekAgo: boolean): IgHome {
   const latest = posted[0] ?? null;
 
   // 비율 KPI: 최근 5편과 그 앞 5편의 중앙값
@@ -102,7 +135,6 @@ export function buildDashboard(input: {
   const prev5 = withIg.slice(5, 10);
   const skip = (xs: EpisodeView[]) => median(xs.map((e) => e.ig!.latest!.skipRate));
   const ss = (xs: EpisodeView[]) => median(xs.map((e) => e.gates.saveShareRate));
-  const hasWeekAgo = input.totalsWeekAgo.igViews > 0 || input.totalsWeekAgo.ytViews > 0;
 
   let latestCard: LatestCard | null = null;
   if (latest) {
@@ -115,42 +147,40 @@ export function buildDashboard(input: {
       skipDelta: deltaNear(ig.map((p) => ({ capturedAt: p.capturedAt, value: p.skipRate }))),
       ytViewsDelta: deltaNear(yt.map((p) => ({ capturedAt: p.capturedAt, value: p.views }))),
       sparkline: ig.filter((p) => p.views !== null).map((p) => ({ h: p.hours, v: p.views! })),
-      benchmarks: eps
-        .filter((e) => e.isBenchmark && e.id !== latest.id && e.ig)
-        .slice(0, 3)
-        .map((b) => ({
-          key: b.key,
-          epNo: b.epNo,
-          title: b.title,
-          viewsAtAge: valueAt(
-            (input.igSeries[b.ig!.mediaId] ?? []).map((p) => ({ hours: p.hours, value: p.views })),
-            igAge,
-            { maxGapHours: 6, anchorZero: true },
-          ),
-        })),
+      benchmarks: benchmarksAt(eps, latest, igAge, (b) =>
+        b.ig ? (input.igSeries[b.ig.mediaId] ?? []).map((p) => ({ hours: p.hours, value: p.views })) : null,
+      ),
     };
   }
 
   const quadrant: QuadrantPoint[] = [];
-  const excluded: DashboardData["excluded"] = [];
+  const excluded: Excluded[] = [];
   for (const e of eps) {
     const m = e.ig?.latest;
     if (!m) continue;
     const g = e.gates;
     if (g.quadrant && m.skipRate !== null && g.saveShareRate !== null) {
+      const saveRate = g.saveRate ?? 0;
       quadrant.push({
         key: e.key,
         epNo: e.epNo,
         title: e.title,
-        skipRate: m.skipRate,
-        saveShareRate: g.saveShareRate,
-        saveRate: g.saveRate ?? 0,
-        shareRate: g.shareRate ?? 0,
+        x: m.skipRate,
+        y: g.saveShareRate,
         views: m.views ?? 0,
         coverUrl: e.coverUrl,
         quadrant: g.quadrant,
+        second: g.spread,
         strictMismatch: g.strictMismatch,
-        spread: g.spread,
+        facts: [
+          { label: "건너뛰기", value: formatPct(m.skipRate) },
+          { label: "저장", value: formatRate(g.saveRate) },
+          { label: "공유", value: formatRate(g.shareRate) },
+          { label: "조회", value: formatCount(m.views) },
+        ],
+        note: g.strictMismatch
+          ? `△ 저장+공유 합은 선 위지만 ${saveRate < GATES.spread.minSaveRate ? "저장" : "공유"}이 기준에 못 미쳐 2차 관문은 미달이다.`
+          : null,
         isLatest: e.id === latest?.id,
       });
     } else {
@@ -164,19 +194,18 @@ export function buildDashboard(input: {
     }
   }
 
+  const { totalsNow: now, totalsWeekAgo: ago } = input;
   return {
-    mode: input.mode,
-    now: input.now.toISOString(),
     kpis: {
-      igViews: { value: input.totalsNow.igViews, compare: hasWeekAgo ? input.totalsNow.igViews - input.totalsWeekAgo.igViews : null },
-      ytViews: { value: input.totalsNow.ytViews, compare: hasWeekAgo ? input.totalsNow.ytViews - input.totalsWeekAgo.ytViews : null },
+      views: { value: now.igViews, compare: hasWeekAgo ? now.igViews - ago.igViews : null },
+      reach: { value: now.igReach, compare: hasWeekAgo ? now.igReach - ago.igReach : null },
       skipMedian: { value: skip(recent5), compare: skip(prev5) },
       saveShareMedian: { value: ss(recent5), compare: ss(prev5) },
     },
     latest: latestCard,
     diagnosis: latestCard
       ? diagnose({
-          label: episodeLabel(latestCard.episode) === "초안" ? "새 편" : `${latestCard.episode.epNo}편`,
+          label: labelOf(latestCard.episode),
           gates: latestCard.episode.gates,
           skipRate: latestCard.episode.ig?.latest?.skipRate ?? null,
           views: latestCard.episode.ig?.latest?.views ?? null,
@@ -192,6 +221,113 @@ export function buildDashboard(input: {
   };
 }
 
+function buildYtHome(eps: EpisodeView[], posted: EpisodeView[], input: DashboardInput, hasWeekAgo: boolean): YtHome {
+  const withYt = posted.filter((e) => e.yt);
+  const latest = withYt[0] ?? null;
+
+  // 비율 KPI: Analytics가 들어온 편 중 최근 5편과 그 앞 5편
+  const withA = withYt.filter((e) => e.yt?.analytics);
+  const recent5 = withA.slice(0, 5);
+  const prev5 = withA.slice(5, 10);
+  const engaged = (xs: EpisodeView[]) => median(xs.map((e) => e.ytGates.engagedRatio));
+  const pct = (xs: EpisodeView[]) => median(xs.map((e) => e.ytGates.avgViewPct));
+  const subs = (xs: EpisodeView[]) => (xs.length ? xs.reduce((n, e) => n + (e.yt!.analytics!.subscribersGained ?? 0), 0) : null);
+
+  let latestCard: YtLatestCard | null = null;
+  if (latest) {
+    const yt = input.ytSeries[latest.yt!.videoId] ?? [];
+    const age = yt.at(-1)?.hours ?? latest.ageHours ?? 0;
+    latestCard = {
+      episode: latest,
+      viewsDelta: deltaNear(yt.map((p) => ({ capturedAt: p.capturedAt, value: p.views }))),
+      sparkline: yt.filter((p) => p.views !== null).map((p) => ({ h: p.hours, v: p.views! })),
+      benchmarks: benchmarksAt(eps, latest, age, (b) =>
+        b.yt ? (input.ytSeries[b.yt.videoId] ?? []).map((p) => ({ hours: p.hours, value: p.views })) : null,
+      ),
+    };
+  }
+
+  const quadrant: QuadrantPoint[] = [];
+  const excluded: Excluded[] = [];
+  for (const e of eps) {
+    if (!e.yt) continue;
+    const g = e.ytGates;
+    const a = e.yt.analytics;
+    if (g.quadrant && g.engagedRatio !== null && g.avgViewPct !== null) {
+      quadrant.push({
+        key: e.key,
+        epNo: e.epNo,
+        title: e.title,
+        x: g.engagedRatio,
+        y: g.avgViewPct,
+        views: e.yt.latest?.views ?? a?.views ?? 0,
+        coverUrl: e.coverUrl,
+        quadrant: g.quadrant,
+        second: g.finish,
+        strictMismatch: false,
+        facts: [
+          { label: "유효 조회", value: formatPct(g.engagedRatio) },
+          { label: "평균 시청", value: formatPct(g.avgViewPct) },
+          { label: "조회", value: formatCount(e.yt.latest?.views ?? a?.views) },
+          { label: "구독", value: formatSignedCount(a?.subscribersGained ?? 0) },
+        ],
+        note: null,
+        isLatest: e.id === latest?.id,
+      });
+    } else if (e.postedAt) {
+      excluded.push({ key: e.key, epNo: e.epNo, reason: a ? `조회 ${YT_GATES.minViews} 미만` : "Analytics 집계 대기" });
+    }
+  }
+
+  const { totalsNow: now, totalsWeekAgo: ago } = input;
+  return {
+    kpis: {
+      views: { value: now.ytViews, compare: hasWeekAgo ? now.ytViews - ago.ytViews : null },
+      engagedMedian: { value: engaged(recent5), compare: engaged(prev5) },
+      avgViewPctMedian: { value: pct(recent5), compare: pct(prev5) },
+      subsRecent: { value: subs(recent5), compare: subs(prev5) },
+    },
+    latest: latestCard,
+    diagnosis: latestCard
+      ? diagnoseYt({
+          label: labelOf(latestCard.episode),
+          gates: latestCard.episode.ytGates,
+          hasAnalytics: !!latestCard.episode.yt?.analytics,
+          views: latestCard.episode.yt?.latest?.views ?? null,
+          ageHours: latestCard.episode.ageHours,
+          viewsDelta: latestCard.viewsDelta,
+          benchmarks: latestCard.benchmarks,
+          retroMissing: !latestCard.episode.retro72h,
+        })
+      : null,
+    quadrant,
+    excluded,
+    recent: withYt.slice(0, 5),
+  };
+}
+
+interface DashboardInput {
+  mode: Repository["mode"];
+  episodes: EpisodeRaw[];
+  igSeries: Record<string, IgPoint[]>;
+  ytSeries: Record<string, YtPoint[]>;
+  totalsNow: ChannelTotals;
+  totalsWeekAgo: ChannelTotals;
+  now: Date;
+}
+
+export function buildDashboard(input: DashboardInput): DashboardData {
+  const eps = input.episodes.filter((e) => e.status !== "archived").map((e) => toView(e, input.now));
+  const posted = eps.filter((e) => e.postedAt).sort(byPostedDesc);
+  const hasWeekAgo = input.totalsWeekAgo.igViews > 0 || input.totalsWeekAgo.ytViews > 0;
+  return {
+    mode: input.mode,
+    now: input.now.toISOString(),
+    ig: buildIgHome(eps, posted, input, hasWeekAgo),
+    yt: buildYtHome(eps, posted, input, hasWeekAgo),
+  };
+}
+
 export async function loadDashboard(repo: Repository): Promise<DashboardData> {
   const now = repo.now();
   const episodes = await repo.listEpisodes();
@@ -201,7 +337,7 @@ export async function loadDashboard(repo: Repository): Promise<DashboardData> {
   const maxHours = Math.max(72, Math.ceil(latest?.ageHours ?? 0) + 1);
   const [igSeries, ytSeries, totalsNow, totalsWeekAgo] = await Promise.all([
     repo.getIgSeries(focus.flatMap((e) => (e.ig ? [e.ig.mediaId] : [])), maxHours),
-    repo.getYtSeries(latest?.yt ? [latest.yt.videoId] : [], maxHours),
+    repo.getYtSeries(focus.flatMap((e) => (e.yt ? [e.yt.videoId] : [])), maxHours),
     repo.getChannelTotals(now),
     repo.getChannelTotals(new Date(now.getTime() - 7 * 24 * 3_600_000)),
   ]);

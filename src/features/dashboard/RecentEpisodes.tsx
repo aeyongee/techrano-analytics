@@ -5,8 +5,19 @@ import { GateBadge } from "@/components/GateBadge";
 import { Panel, PanelHeader } from "@/components/Panel";
 import type { EpisodeView } from "@/lib/data/builders";
 import { formatAge, formatCount, formatPct } from "@/lib/domain/format";
+import type { Platform } from "@/lib/domain/types";
 
-export function RecentEpisodes({ episodes, basePath }: { episodes: EpisodeView[]; basePath: string }) {
+/** 플랫폼별 한 줄 요약과 관문 */
+function summaryOf(e: EpisodeView, platform: Platform) {
+  if (platform === "yt") {
+    const views = `조회 ${formatCount(e.yt?.latest?.views)}`;
+    const watch = e.yt?.analytics ? `유효 조회 ${formatPct(e.ytGates.engagedRatio)} · 평균 시청 ${formatPct(e.ytGates.avgViewPct)}` : "Analytics 집계 대기";
+    return { line: `${views} · ${watch}`, first: e.ytGates.hook, second: e.ytGates.finish };
+  }
+  return { line: `조회 ${formatCount(e.ig?.latest?.views)} · 건너뛰기 ${formatPct(e.ig?.latest?.skipRate)}`, first: e.gates.hook, second: e.gates.spread };
+}
+
+export function RecentEpisodes({ episodes, platform, basePath }: { episodes: EpisodeView[]; platform: Platform; basePath: string }) {
   return (
     <Panel aria-labelledby="recent-title">
       <PanelHeader
@@ -18,7 +29,9 @@ export function RecentEpisodes({ episodes, basePath }: { episodes: EpisodeView[]
         }
       />
       <ul className="mt-2 divide-y divide-border">
-        {episodes.map((e) => (
+        {episodes.map((e) => {
+          const sum = summaryOf(e, platform);
+          return (
           <li key={e.key}>
             <Link
               href={`${basePath}/episodes/${e.key}`}
@@ -29,17 +42,18 @@ export function RecentEpisodes({ episodes, basePath }: { episodes: EpisodeView[]
                 <span className="block text-[11px] font-bold text-muted-foreground tabular-nums">{e.epNo !== null ? `${e.epNo}편` : "초안"}</span>
                 <span className="block truncate text-sm font-semibold">{e.title}</span>
                 <span className="block text-xs text-muted-foreground tabular-nums">
-                  {formatAge(e.ageHours)} 전 · 조회 {formatCount(e.ig?.latest?.views)} · 건너뛰기 {formatPct(e.ig?.latest?.skipRate)}
+                  {formatAge(e.ageHours)} 전 · {sum.line}
                 </span>
               </span>
               <span className="hidden gap-1.5 sm:flex xl:hidden 2xl:flex">
-                <GateBadge label="1차" verdict={e.gates.hook} />
-                <GateBadge label="2차" verdict={e.gates.spread} />
+                <GateBadge label="1차" verdict={sum.first} />
+                <GateBadge label="2차" verdict={sum.second} />
               </span>
               <ChevronRight className="size-4 text-muted-foreground" aria-hidden />
             </Link>
           </li>
-        ))}
+          );
+        })}
       </ul>
     </Panel>
   );

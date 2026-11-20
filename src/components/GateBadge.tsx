@@ -19,11 +19,11 @@ export function GateBadge({ label, verdict, className }: { label: string; verdic
   );
 }
 
-export function GateBadges({ hook, spread }: { hook: Verdict; spread: Verdict }) {
+export function GateBadges({ hook, spread, labels = ["1차 훅", "2차 확산"] }: { hook: Verdict; spread: Verdict; labels?: [string, string] }) {
   return (
     <span className="flex flex-wrap gap-1.5">
-      <GateBadge label="1차 훅" verdict={hook} />
-      <GateBadge label="2차 확산" verdict={spread} />
+      <GateBadge label={labels[0]} verdict={hook} />
+      <GateBadge label={labels[1]} verdict={spread} />
     </span>
   );
 }

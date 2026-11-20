@@ -1,5 +1,6 @@
-import { GATES, QUADRANT_Y_LINE } from "./constants";
-import type { IgMetrics, Quadrant, Verdict } from "./types";
+import { GATES, QUADRANT_Y_LINE, YT_GATES } from "./constants";
+import { engagedRatio } from "./metrics";
+import type { IgMetrics, Quadrant, Verdict, YtAnalyticsMetrics } from "./types";
 
 export interface GateResult {
   hook: Verdict;
@@ -49,4 +50,31 @@ export function evaluateGates(m: IgMetrics): GateResult {
     strictMismatch = up && spread === "fail";
   }
   return { hook, save, share, spread, quadrant, strictMismatch, saveRate, shareRate, saveShareRate };
+}
+
+export interface YtGateResult {
+  /** 1차: 유효 조회 비율 */
+  hook: Verdict;
+  /** 2차: 평균 시청률 */
+  finish: Verdict;
+  /** 사분면 위치(오른쪽 = 1차 통과, 위 = 2차 통과). 판정 대기면 null */
+  quadrant: Quadrant | null;
+  engagedRatio: number | null;
+  avgViewPct: number | null;
+}
+
+export function evaluateYtGates(a: YtAnalyticsMetrics | null): YtGateResult {
+  const engaged = engagedRatio(a);
+  const avgViewPct = a?.avgViewPct ?? null;
+  const ready = !!a && a.views >= YT_GATES.minViews;
+  const hook: Verdict = !ready || engaged === null ? "pending" : engaged >= YT_GATES.hook.minEngagedRatio ? "pass" : "fail";
+  const finish: Verdict =
+    !ready || avgViewPct === null ? "pending" : avgViewPct >= YT_GATES.finish.minAvgViewPct ? "pass" : "fail";
+  let quadrant: Quadrant | null = null;
+  if (hook !== "pending" && finish !== "pending") {
+    const right = hook === "pass";
+    const up = finish === "pass";
+    quadrant = right ? (up ? "breakout" : "saveWeak") : up ? "hookWeak" : "rework";
+  }
+  return { hook, finish, quadrant, engagedRatio: engaged, avgViewPct };
 }

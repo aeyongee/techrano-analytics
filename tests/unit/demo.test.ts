@@ -12,13 +12,23 @@ describe("데모 데이터", () => {
 
   it("홈에 사분면 4칸, △ 예시, 진행 중인 초안이 다 나온다", async () => {
     const d = await loadDashboard(new DemoRepository(generateDemoWorld(anchor)));
-    expect(new Set(d.quadrant.map((p) => p.quadrant))).toEqual(new Set(["breakout", "hookWeak", "saveWeak", "rework"]));
-    expect(d.quadrant.some((p) => p.strictMismatch)).toBe(true);
-    expect(d.latest?.episode).toMatchObject({ status: "draft", autoPaired: true });
-    expect(d.latest?.igViewsDelta?.abs).toBeGreaterThan(0);
-    expect(d.latest?.benchmarks.every((b) => b.viewsAtAge !== null)).toBe(true);
-    expect(d.latest?.episode.yt?.analytics).toBeNull(); // 20시간 된 편은 Analytics 집계 전
-    expect(d.kpis.igViews.compare).toBeGreaterThan(0);
+    expect(new Set(d.ig.quadrant.map((p) => p.quadrant))).toEqual(new Set(["breakout", "hookWeak", "saveWeak", "rework"]));
+    expect(d.ig.quadrant.some((p) => p.strictMismatch)).toBe(true);
+    expect(d.ig.latest?.episode).toMatchObject({ status: "draft", autoPaired: true });
+    expect(d.ig.latest?.igViewsDelta?.abs).toBeGreaterThan(0);
+    expect(d.ig.latest?.benchmarks.every((b) => b.viewsAtAge !== null)).toBe(true);
+    expect(d.ig.latest?.episode.yt?.analytics).toBeNull(); // 20시간 된 편은 Analytics 집계 전
+    expect(d.ig.kpis.views.compare).toBeGreaterThan(0);
+  });
+
+  it("유튜브 탭은 따로 판정한다: 최신 편은 집계 대기, 지난 편들은 관문 지도에", async () => {
+    const d = await loadDashboard(new DemoRepository(generateDemoWorld(anchor)));
+    expect(d.yt.latest?.episode.key).toBe(d.ig.latest?.episode.key);
+    expect(d.yt.diagnosis?.tone).toBe("wait");
+    expect(d.yt.diagnosis?.headline).toContain("집계 뒤에");
+    expect(d.yt.quadrant.length).toBeGreaterThanOrEqual(8);
+    expect(d.yt.excluded.some((e) => e.reason === "Analytics 집계 대기")).toBe(true);
+    expect(d.yt.kpis.engagedMedian.value).not.toBeNull();
   });
 
   it("스냅샷 간격이 실서비스 규칙을 따른다", () => {

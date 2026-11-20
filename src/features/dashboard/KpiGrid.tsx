@@ -1,6 +1,6 @@
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { cn } from "cn";
-import type { DashboardData } from "@/lib/data/builders";
+import type { IgHome, KpiValue, YtHome } from "@/lib/data/builders";
 import { formatCount, formatPct, formatRate, formatSignedCount } from "@/lib/domain/format";
 
 function Tile({ label, value, children }: { label: string; value: string; children: React.ReactNode }) {
@@ -24,24 +24,47 @@ function Trend({ up, good, children }: { up: boolean | null; good: boolean | nul
   );
 }
 
-export function KpiGrid({ kpis }: { kpis: DashboardData["kpis"] }) {
-  const { igViews, ytViews, skipMedian, saveShareMedian } = kpis;
-  const growth = (v: number | null) =>
-    v === null ? <span className="text-muted-foreground">수집 7일 뒤부터 표시</span> : <Trend up={v >= 0} good={v >= 0}>{formatSignedCount(v)} · 7일</Trend>;
+const growth = (v: number | null) =>
+  v === null ? <span className="text-muted-foreground">수집 7일 뒤부터 표시</span> : <Trend up={v >= 0} good={v >= 0}>{formatSignedCount(v)} · 7일</Trend>;
+
+/** 직전 5편보다 올랐는지. 같거나 비교할 값이 없으면 null */
+const rose = (k: KpiValue) => (k.value !== null && k.compare !== null && k.value !== k.compare ? k.value > k.compare : null);
+
+export function KpiGrid({ kpis }: { kpis: IgHome["kpis"] }) {
+  const { views, reach, skipMedian, saveShareMedian } = kpis;
   // 건너뛰기는 낮을수록 좋다
-  const rose = (k: { value: number | null; compare: number | null }) =>
-    k.value !== null && k.compare !== null && k.value !== k.compare ? k.value > k.compare : null;
   const skipUp = rose(skipMedian);
   const ssUp = rose(saveShareMedian);
   return (
     <div className="grid grid-cols-2 gap-3 xl:grid-cols-4 xl:gap-4">
-      <Tile label="인스타 총 조회" value={formatCount(igViews.value)}>{growth(igViews.compare)}</Tile>
-      <Tile label="유튜브 총 조회" value={formatCount(ytViews.value)}>{growth(ytViews.compare)}</Tile>
+      <Tile label="인스타 총 조회" value={formatCount(views.value)}>{growth(views.compare)}</Tile>
+      <Tile label="인스타 총 도달" value={formatCount(reach.value)}>{growth(reach.compare)}</Tile>
       <Tile label="건너뛰기 (최근 5편)" value={formatPct(skipMedian.value)}>
         <Trend up={skipUp} good={skipUp === null ? null : !skipUp}>직전 5편 {formatPct(skipMedian.compare)}</Trend>
       </Tile>
       <Tile label="저장+공유 (최근 5편)" value={formatRate(saveShareMedian.value)}>
         <Trend up={ssUp} good={ssUp}>직전 5편 {formatRate(saveShareMedian.compare)}</Trend>
+      </Tile>
+    </div>
+  );
+}
+
+export function YtKpiGrid({ kpis }: { kpis: YtHome["kpis"] }) {
+  const { views, engagedMedian, avgViewPctMedian, subsRecent } = kpis;
+  const engagedUp = rose(engagedMedian);
+  const pctUp = rose(avgViewPctMedian);
+  const subsUp = rose(subsRecent);
+  return (
+    <div className="grid grid-cols-2 gap-3 xl:grid-cols-4 xl:gap-4">
+      <Tile label="유튜브 총 조회" value={formatCount(views.value)}>{growth(views.compare)}</Tile>
+      <Tile label="유효 조회 비율 (최근 5편)" value={formatPct(engagedMedian.value)}>
+        <Trend up={engagedUp} good={engagedUp}>직전 5편 {formatPct(engagedMedian.compare)}</Trend>
+      </Tile>
+      <Tile label="평균 시청률 (최근 5편)" value={formatPct(avgViewPctMedian.value)}>
+        <Trend up={pctUp} good={pctUp}>직전 5편 {formatPct(avgViewPctMedian.compare)}</Trend>
+      </Tile>
+      <Tile label="구독 증가 (최근 5편 합)" value={subsRecent.value === null ? "—" : formatSignedCount(subsRecent.value)}>
+        <Trend up={subsUp} good={subsUp}>직전 5편 {subsRecent.compare === null ? "—" : formatSignedCount(subsRecent.compare)}</Trend>
       </Tile>
     </div>
   );
