@@ -19,7 +19,10 @@
     "verify-rls": "tsx --env-file-if-exists=.env.local scripts/verify-rls.ts",
     "db:push": "npx -y supabase db push",
     "db:types": "npx -y supabase gen types typescript --linked > src/lib/supabase/database.types.ts",
-    "scan": "bash scripts/scan-secrets.sh"
+    "scan": "bash scripts/scan-secrets.sh",
+    "check-setup": "tsx --env-file-if-exists=.env.local scripts/check-setup.ts",
+    "set-env": "bash scripts/set-env.sh",
+    "db:apply": "tsx --env-file-if-exists=.env.local scripts/db-apply.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

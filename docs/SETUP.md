@@ -37,20 +37,19 @@
 
 ## 2. DB 준비와 첫 수집 (Claude에게 맡기면 된다, 10분)
 
+값은 `bash scripts/set-env.sh`로 넣는다(텍스트 편집기 저장이 막힐 때가 있다). 한글이 섞이면 받지 않고, URL 끝의 `/rest/v1/`는 지운다.
+
 ```bash
-npx supabase login                               # 브라우저 로그인(사용자가 한 번 승인)
-npx supabase link --project-ref <프로젝트 ref>
-npm run db:push                                  # 마이그레이션 4개
-npm run verify-rls                               # anon 거부, 비관리자 0행 확인
-npm run seed -- --readme ~/Desktop/Techrano/업로드/README.md            # 미리보기
+npm run check-setup                               # 값 형식, 가입 막힘, 관리자 표시를 한 번에 확인(값은 출력 안 함)
+npm run db:apply -- --apply                       # 마이그레이션(관리 API, DB 비밀번호 없이 access token으로)
+npm run verify-rls                                # anon 거부, 비관리자 0행 확인
 npm run seed -- --readme ~/Desktop/Techrano/업로드/README.md --apply    # 01~10편, 기준편 05·07
 npm run sync -- --force --discover-all            # 첫 수집: 10편 매칭, 초안 0 확인
-npm run import-points -- --file seed/manual-points.local.json          # (선택) 성과.md의 정확한 기록
-npm run import-points -- --file seed/manual-points.local.json --apply
-npm run dev                                       # http://localhost:3000/login 에서 관리자 로그인 확인
+npm run import-points -- --file seed/manual-points.local.json --apply  # (선택) 성과.md의 정확한 기록
+npx tsx --env-file=.env.local scripts/live-smoke.ts --base http://localhost:3000   # 관리자 화면이 열리는지
 ```
 
-`supabase login`이 번거로우면 대시보드 Connect → Session pooler 주소로 `npx supabase db push --db-url "<주소>"`를 써도 된다.
+Supabase CLI(`npx supabase db push --remote`)를 쓰려면 프로젝트를 만들 때 정한 DB 비밀번호가 `SUPABASE_DB_PASSWORD`에 맞게 들어가 있어야 한다. `db:apply`는 CLI와 같은 적용 기록 표를 쓰므로 섞어 써도 된다.
 
 ## 3. Google OAuth 앱 게시 (사용자, 5분)
 
