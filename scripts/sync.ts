@@ -58,7 +58,7 @@ try {
     인스타: { 상태: s.ig.status, 대상: s.ig.due, 수집: s.ig.captured },
     유튜브: { 상태: `${s.yt.status} (Analytics ${s.yt.analytics})`, 대상: s.yt.due, 수집: s.yt.captured },
   });
-  console.log(`새 게시물 ${s.newMedia} · 새 초안 ${s.draftsCreated} · 자동 짝 ${s.autoPaired} · API 호출 ${JSON.stringify(s.apiCalls)}`);
+  console.log(`새 게시물 ${s.newMedia} · 새 초안 ${s.draftsCreated} · 자동 짝 ${s.autoPaired} · 예정 편 게시 ${s.draftsPublished} · API 호출 ${JSON.stringify(s.apiCalls)}`);
   if (s.notes.length) console.log(`메모: ${s.notes.join("; ")}`);
   if (s.errors.length) console.table(s.errors);
 

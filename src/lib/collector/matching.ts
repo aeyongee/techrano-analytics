@@ -53,8 +53,11 @@ export interface PairCandidate {
 
 export const AUTO_PAIR_WINDOW_H = 12;
 
+/** 번호가 없는 초안. 합치면 지워지는 쪽은 이것뿐이다(번호를 미리 받은 예정 편은 남긴다). */
+const isLooseDraft = (e: EpisodeKey) => e.status === "draft" && e.epNo === null;
+
 /**
- * 한 플랫폼만 연결된 편끼리, 적어도 한쪽이 초안이고 시각 차가 window 안이며
+ * 한 플랫폼만 연결된 편끼리, 적어도 한쪽이 번호 없는 초안이고 시각 차가 window 안이며
  * 양쪽 모두 후보가 하나뿐일 때만 짝을 짓는다. source(지울 초안) → target(남길 편).
  */
 export function findAutoPairs(cands: PairCandidate[], windowHours = AUTO_PAIR_WINDOW_H): { sourceId: number; targetId: number }[] {
@@ -66,7 +69,7 @@ export function findAutoPairs(cands: PairCandidate[], windowHours = AUTO_PAIR_WI
   const edges: [PairCandidate, PairCandidate][] = [];
   for (const i of igOnly) {
     for (const y of ytOnly) {
-      if (i.episode.status !== "draft" && y.episode.status !== "draft") continue;
+      if (!isLooseDraft(i.episode) && !isLooseDraft(y.episode)) continue;
       if (Math.abs(i.igTime!.getTime() - y.ytTime!.getTime()) <= windowMs) edges.push([i, y]);
     }
   }
@@ -78,7 +81,7 @@ export function findAutoPairs(cands: PairCandidate[], windowHours = AUTO_PAIR_WI
   return edges
     .filter(([i, y]) => degree.get(i.episode.id) === 1 && degree.get(y.episode.id) === 1)
     .map(([i, y]) =>
-      y.episode.status === "draft"
+      isLooseDraft(y.episode)
         ? { sourceId: y.episode.id, targetId: i.episode.id }
         : { sourceId: i.episode.id, targetId: y.episode.id },
     );

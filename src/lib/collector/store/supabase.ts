@@ -206,6 +206,13 @@ export class SupabaseSyncStore implements SyncStore {
     ok("merge_episode", await this.db.rpc("merge_episode", { p_source: sourceId, p_target: targetId, p_auto: auto }));
   }
 
+  async publishEpisode(episodeId: number) {
+    ok(
+      "episodes publish",
+      await this.db.from("episodes").update({ status: "published" }).eq("id", episodeId).eq("status", "draft").not("ep_no", "is", null),
+    );
+  }
+
   async insertIgSnapshots(rows: IgSnapshotInput[], runId: number | null) {
     const data = check(
       "ig_snapshots insert",

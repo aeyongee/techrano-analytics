@@ -39,6 +39,8 @@ export interface SyncSummary {
   newMedia: number;
   draftsCreated: number;
   autoPaired: number;
+  /** 번호를 미리 받은 예정 편 중 이번 회차에 게시로 바뀐 수 */
+  draftsPublished: number;
   apiCalls: Record<string, number>;
   errors: SyncError[];
   notes: string[];
@@ -168,6 +170,8 @@ export interface SyncStore {
   createDraftEpisode(input: { title: string; igShortcode?: string | null; ytVideoId?: string | null }): Promise<number>;
   linkEpisode(episodeId: number, platform: Platform, key: string): Promise<void>;
   mergeEpisodes(sourceId: number, targetId: number, auto: boolean): Promise<void>;
+  /** 번호가 있는 초안을 게시된 편으로 바꾼다(이미 바뀌었으면 그대로). */
+  publishEpisode(episodeId: number): Promise<void>;
   insertIgSnapshots(rows: IgSnapshotInput[], runId: number | null): Promise<number>;
   insertYtSnapshots(rows: YtSnapshotInput[], runId: number | null): Promise<number>;
   /** 채널 팔로워·구독자 수(같은 플랫폼·시각이면 건너뛴다) */

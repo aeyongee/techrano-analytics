@@ -126,6 +126,15 @@ describe("자동 짝짓기", () => {
     ).toEqual([]);
   });
 
+  it("번호를 미리 받은 예정 편(YT만)과 IG 초안은 초안을 예정 편으로 합친다(예정 편을 지우지 않는다)", () => {
+    const planned: EpisodeKey = { id: 11, epNo: 11, title: "예정 편", status: "draft", igShortcode: null, ytVideoId: "yt000000011" };
+    const pairs = findAutoPairs([
+      { episode: ep(10, "draft", "IG10", null), igTime: ago(1), ytTime: null },
+      { episode: planned, igTime: null, ytTime: ago(1.5) },
+    ]);
+    expect(pairs).toEqual([{ sourceId: 10, targetId: 11 }]);
+  });
+
   it("둘 다 확정 편이면 건드리지 않는다", () => {
     expect(
       findAutoPairs([

@@ -122,6 +122,11 @@ export class MemorySyncStore implements SyncStore {
     this.episodes.splice(this.episodes.indexOf(source), 1);
   }
 
+  async publishEpisode(episodeId: number) {
+    const ep = this.episodes.find((e) => e.id === episodeId);
+    if (ep && ep.status === "draft" && ep.epNo !== null) ep.status = "published";
+  }
+
   async insertIgSnapshots(rows: IgSnapshotInput[], runId: number | null) {
     this.igSnapshots.push(...rows.map((r) => ({ ...r, runId })));
     return rows.length;

@@ -281,4 +281,27 @@ describe("runSync", () => {
     expect(s.autoPaired).toBe(0);
     expect(store.episodes.filter((e) => e.status === "draft")).toHaveLength(2);
   });
+
+  it("번호를 미리 받은 예정 편은 제목으로 붙고, 공개되면 게시로 바뀐다", async () => {
+    const store = seededStore();
+    store.addEpisode({ epNo: 6, title: "새로 올린 편", status: "draft", igShortcode: null, ytVideoId: null });
+    const { impl } = world();
+    const s = await runSync({ trigger: "cli" }, deps(store, impl));
+
+    // 릴스는 캡션 첫 줄로 예정 편에 붙고, 게시된 릴스라 바로 게시로 바뀐다
+    expect(store.episodes.find((e) => e.epNo === 6)).toMatchObject({ status: "published", igShortcode: "SC2" });
+    expect(s.draftsPublished).toBe(1);
+    // 제목이 다른 예약 쇼츠는 번호 없는 초안이 되고, 예정 편 쪽으로 합쳐진다
+    expect(store.episodes.find((e) => e.epNo === 6)?.ytVideoId).toBe("ytvideo0002");
+    expect(store.episodes.filter((e) => e.status === "draft")).toEqual([]);
+  });
+
+  it("예약(private) 쇼츠만 붙은 예정 편은 공개될 때까지 초안으로 둔다", async () => {
+    const store = seededStore();
+    store.addEpisode({ epNo: 6, title: "다른 이름의 쇼츠", status: "draft", igShortcode: null, ytVideoId: null });
+    const { impl } = world({ media: () => ({ body: { data: [] } }) });
+    const s = await runSync({ trigger: "cli" }, deps(store, impl));
+    expect(store.episodes.find((e) => e.epNo === 6)).toMatchObject({ status: "draft", ytVideoId: "ytvideo0002" });
+    expect(s.draftsPublished).toBe(0);
+  });
 });

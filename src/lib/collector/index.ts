@@ -1,5 +1,5 @@
 import { SyncContext } from "./context";
-import { autoPairDrafts } from "./episodes";
+import { autoPairDrafts, publishNumberedDrafts } from "./episodes";
 import type { CollectorEnv } from "./env";
 import { HttpError, type Sleep } from "./http";
 import { InstagramClient } from "./instagram/client";
@@ -30,7 +30,7 @@ function errorCode(e: unknown): string {
 
 /**
  * 크론·Sync Now·CLI가 함께 쓰는 수집 한 회차.
- * 잠금 → 상태 읽기 → 발견(IG ∥ YT) → 자동 짝짓기 → 수집(IG ∥ YT) → 기록.
+ * 잠금 → 상태 읽기 → 발견(IG ∥ YT) → 자동 짝짓기·예약 편 게시 → 수집(IG ∥ YT) → 기록.
  * 한 플랫폼이 실패해도 다른 플랫폼은 끝까지 수집한다.
  */
 export async function runSync(opts: RunSyncOptions, deps: SyncDeps): Promise<SyncSummary> {
@@ -51,6 +51,7 @@ export async function runSync(opts: RunSyncOptions, deps: SyncDeps): Promise<Syn
   let newMedia = 0;
   let draftsCreated = 0;
   let autoPaired = 0;
+  let draftsPublished = 0;
   let fatal = false;
 
   const platformError = (platform: SyncError["platform"], stage: SyncError["stage"], e: unknown) =>
@@ -129,6 +130,7 @@ export async function runSync(opts: RunSyncOptions, deps: SyncDeps): Promise<Syn
     // ── 자동 짝짓기(발견이 끝난 뒤라 경쟁이 없다) ─────────────────
     try {
       autoPaired = await autoPairDrafts(deps.store, state);
+      draftsPublished = await publishNumberedDrafts(deps.store, state);
     } catch (e) {
       platformError("db", "pair", e);
     }
@@ -201,6 +203,7 @@ export async function runSync(opts: RunSyncOptions, deps: SyncDeps): Promise<Syn
     newMedia,
     draftsCreated,
     autoPaired,
+    draftsPublished,
     apiCalls: ctx.calls,
     errors: ctx.errors,
     notes: ctx.notes,

@@ -52,6 +52,9 @@ export class DryRunStore implements SyncStore {
   async mergeEpisodes(sourceId: number, targetId: number) {
     this.writes.push(`episodes 합치기 ${sourceId} → ${targetId}`);
   }
+  async publishEpisode(episodeId: number) {
+    this.writes.push(`episodes ${episodeId} 게시로 바꿈`);
+  }
   async insertIgSnapshots(rows: IgSnapshotInput[]) {
     this.igSnapshots.push(...rows);
     return rows.length;

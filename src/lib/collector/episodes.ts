@@ -56,3 +56,22 @@ export async function autoPairDrafts(store: SyncStore, state: SyncState): Promis
   }
   return pairs.length;
 }
+
+/**
+ * 번호를 미리 받은 예정 편(시드가 README 행으로 만든 초안)에 실제로 공개된 게시물이 붙으면 게시된 편으로 바꾼다.
+ * 인스타는 게시된 릴스만 보이고, 유튜브는 예약(private) 동안 기다렸다가 public이 되면 바꾼다. 바꾼 수를 돌려준다.
+ */
+export async function publishNumberedDrafts(store: SyncStore, state: SyncState): Promise<number> {
+  const igShortcodes = new Set([...state.ig.values()].map((m) => m.shortcode));
+  let published = 0;
+  for (const ep of state.episodes) {
+    if (ep.status !== "draft" || ep.epNo === null) continue;
+    const igLive = ep.igShortcode !== null && igShortcodes.has(ep.igShortcode);
+    const ytLive = ep.ytVideoId !== null && state.yt.get(ep.ytVideoId)?.privacyStatus === "public";
+    if (!igLive && !ytLive) continue;
+    await store.publishEpisode(ep.id);
+    ep.status = "published";
+    published++;
+  }
+  return published;
+}
